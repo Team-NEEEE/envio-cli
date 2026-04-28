@@ -1,0 +1,17 @@
+# 1. IntelliJ IDE 로컬 설정
+.idea/
+*.iml
+
+# 2. Go 빌드 및 테스트 파일
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+coverage.txt
+
+# 3. Envio 로컬 격리 세션 및 키 저장소 (중요)
+.envio/
