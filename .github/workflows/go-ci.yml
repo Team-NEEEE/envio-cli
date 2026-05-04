@@ -1,0 +1,116 @@
+name: Go CI
+
+on:
+  pull_request:
+    branches: [ "develop" ]
+  push:
+    branches: [ "develop" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Go quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Detect Go files
+        id: go-files
+        shell: bash
+        run: |
+          if git ls-files '*.go' | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Check gofmt
+        if: steps.go-files.outputs.present == 'true'
+        shell: bash
+        run: |
+          mapfile -t go_files < <(git ls-files '*.go')
+          unformatted="$(gofmt -l "${go_files[@]}")"
+          if [ -n "$unformatted" ]; then
+            echo "The following files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Check go.mod and go.sum
+        if: steps.go-files.outputs.present == 'true'
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Run go vet
+        if: steps.go-files.outputs.present == 'true'
+        run: go vet ./...
+
+      - name: Run tests with race detector
+        if: steps.go-files.outputs.present == 'true'
+        run: go test -race -cover ./...
+
+      - name: Build packages
+        if: steps.go-files.outputs.present == 'true'
+        run: go build ./...
+
+      - name: Build CLI binary
+        if: hashFiles('cmd/envio/**/*.go') != ''
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags="-s -w" -o dist/envio ./cmd/envio
+
+  cross-platform:
+    name: Go test and build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Detect Go files
+        id: go-files
+        shell: bash
+        run: |
+          if git ls-files '*.go' | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run tests
+        if: steps.go-files.outputs.present == 'true'
+        run: go test ./...
+
+      - name: Build packages
+        if: steps.go-files.outputs.present == 'true'
+        run: go build ./...
