@@ -1,0 +1,99 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    branches: [ "develop" ]
+    types: [ opened, synchronize, reopened ]
+  issue_comment:
+    types: [ created ]
+  pull_request_review_comment:
+    types: [ created ]
+  pull_request_review:
+    types: [ submitted ]
+
+jobs:
+  review:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Claude Code review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            이 Pull Request를 리뷰해 주세요. 리뷰 코멘트는 반드시 아래 우선순위 접두사를 붙여 작성해 주세요.
+            - P1 : 꼭 반영해 주세요 — 버그, 보안 취약점, 빌드 오류 등 반드시 수정이 필요한 문제
+            - P2 : 반영을 적극적으로 고려해 주세요 — 성능, 가독성, 설계 개선 제안
+            - P3 : 이런 방법도 있을 것 같아요 — 사소한 스타일, 네이밍, 선택적 리팩터링
+
+            특히 아래 Go 관련 항목을 중점 확인해 주세요.
+            - 에러 처리: error 반환 누락, 무시된 에러(`_`), fmt.Errorf wrapping 여부
+            - 고루틴/채널: 고루틴 누수, 경쟁 조건, context 전파 누락
+            - 리소스 관리: defer 누락, DB·파일·네트워크 연결 미종료
+            - 인터페이스 설계: 최소 인터페이스 원칙, 불필요한 추상화
+            - 패키지 구조: 순환 의존성, 과도한 패키지 분리
+            - 테스트: 테이블 드리븐 테스트 부재, t.Helper 미사용, 깨지기 쉬운 테스트
+            - 보안: 환경변수·비밀값 하드코딩, 입력값 미검증
+
+            필요한 경우 `go build ./...`, `go test ./...`, `go vet ./...` 명령을 실행해 결과를 참고해 주세요.
+            리뷰 결과는 GitHub PR 코멘트로만 남기고, P1 문제를 가장 먼저 작성해 주세요.
+            좋은 코드를 발견한 경우 칭찬과 격려도 아끼지 말아 주세요.
+          claude_args: |
+            --max-turns 5
+            --model claude-sonnet-4-6
+            --allowedTools "Bash(go build:*),Bash(go test:*),Bash(go vet:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+
+  mention:
+    if: |
+      (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Claude Code mention response
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: "@claude"
+          claude_args: |
+            --max-turns 5
+            --model claude-sonnet-4-6
+            --allowedTools "Bash(go build:*),Bash(go test:*),Bash(go vet:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
