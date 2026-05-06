@@ -60,8 +60,8 @@ type AppError struct {
 	Code     string   `json:"code"`
 	Message  string   `json:"message"`
 	Hint     string   `json:"hint,omitempty"`
-	ExitCode int      `json:"exitCode"`
 	Severity Severity `json:"severity"`
+	ExitCode int      `json:"exitCode"`
 }
 
 func NewAppError(code, message, hint string, exitCode int, severity Severity) *AppError {

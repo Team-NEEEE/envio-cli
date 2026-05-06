@@ -11,8 +11,8 @@ import (
 type stepMsg command.StepUpdate
 
 type doneMsg struct {
-	result command.Result
 	appErr *command.AppError
+	result command.Result
 }
 
 func runTUI(ctx context.Context, cmd command.Command, options Options) int {

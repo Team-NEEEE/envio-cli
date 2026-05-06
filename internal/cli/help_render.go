@@ -11,7 +11,7 @@ import (
 )
 
 func applyHelpTemplate(cmd *cobra.Command, lang i18n.Language) {
-	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+	cmd.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
 		localizeBuiltInFlags(cmd, lang)
 		_, _ = fmt.Fprint(cmd.OutOrStdout(), renderHelp(cmd, lang))
 	})

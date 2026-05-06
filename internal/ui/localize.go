@@ -20,8 +20,8 @@ type localizedError struct {
 	Code     string           `json:"code"`
 	Message  string           `json:"message"`
 	Hint     string           `json:"hint,omitempty"`
-	ExitCode int              `json:"exitCode"`
 	Severity command.Severity `json:"severity"`
+	ExitCode int              `json:"exitCode"`
 }
 
 func localizedTitle(result command.Result, lang i18n.Language) string {

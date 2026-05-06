@@ -7,14 +7,14 @@ import (
 )
 
 type Options struct {
-	Mode       RequestedMode
-	Language   i18n.Language
-	Debug      bool
-	Env        map[string]string
-	IsTerminal func() bool
 	Input      io.Reader
 	Output     io.Writer
 	ErrOutput  io.Writer
+	Env        map[string]string
+	IsTerminal func() bool
+	Mode       RequestedMode
+	Language   i18n.Language
+	Debug      bool
 }
 
 func (o Options) selectedMode() RequestedMode {

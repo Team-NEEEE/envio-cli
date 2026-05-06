@@ -19,7 +19,7 @@ func rootLong(lang i18n.Language) string {
 	return rootShort(lang)
 }
 
-func rootExample(lang i18n.Language) string {
+func rootExample() string {
 	return ""
 }
 

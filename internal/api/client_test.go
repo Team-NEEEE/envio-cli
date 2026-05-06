@@ -22,7 +22,7 @@ func TestHTTPClientReturnsBackendError(t *testing.T) {
 
 		writer.Header().Set("Content-Type", defaultContentType)
 		writer.WriteHeader(http.StatusBadRequest)
-		_, _ = io.WriteString(writer, `{
+		if _, err := io.WriteString(writer, `{
 			"success": false,
 			"data": null,
 			"error": {
@@ -38,7 +38,9 @@ func TestHTTPClientReturnsBackendError(t *testing.T) {
 				]
 			},
 			"timestamp": "2026-05-06T00:04:31.127Z"
-		}`)
+		}`); err != nil {
+			t.Fatalf("write response body: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -73,10 +75,12 @@ func TestHTTPClientReturnsBackendError(t *testing.T) {
 func TestHTTPClientReturnsHTTPResponseErrorForNonJSONBody(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "text/html")
 		writer.WriteHeader(http.StatusBadGateway)
-		_, _ = io.WriteString(writer, "<html><body>bad gateway</body></html>")
+		if _, err := io.WriteString(writer, "<html><body>bad gateway</body></html>"); err != nil {
+			t.Fatalf("write response body: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -108,7 +112,7 @@ func TestHTTPClientReturnsHTTPResponseErrorForNonJSONBody(t *testing.T) {
 func TestHTTPClientHandlesEmptySuccessfulResponse(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()

@@ -6,11 +6,11 @@ func TestSelectMode(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
+		env        map[string]string
 		name       string
 		requested  RequestedMode
-		isTerminal bool
-		env        map[string]string
 		want       RequestedMode
+		isTerminal bool
 	}{
 		{name: "auto terminal uses tui", requested: ModeAuto, isTerminal: true, want: ModeTUI},
 		{name: "auto pipe uses plain", requested: ModeAuto, isTerminal: false, want: ModePlain},

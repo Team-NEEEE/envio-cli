@@ -8,11 +8,11 @@ import (
 )
 
 type jsonResult struct {
+	Error    *localizedError        `json:"error,omitempty"`
 	Status   command.Status         `json:"status"`
 	Title    string                 `json:"title,omitempty"`
 	Summary  []localizedSummaryItem `json:"summary,omitempty"`
 	Warnings []localizedWarning     `json:"warnings,omitempty"`
-	Error    *localizedError        `json:"error,omitempty"`
 }
 
 func runJSON(ctx context.Context, cmd command.Command, options Options) int {
@@ -37,7 +37,9 @@ func renderJSONResult(result command.Result, options Options) int {
 	}
 	encoder := json.NewEncoder(options.Output)
 	encoder.SetIndent("", "  ")
-	_ = encoder.Encode(payload)
+	if err := encoder.Encode(payload); err != nil {
+		return 1
+	}
 	return 0
 }
 
@@ -53,6 +55,8 @@ func renderJSONError(appErr *command.AppError, options Options) int {
 	payload := jsonResult{Status: status, Error: &localized}
 	encoder := json.NewEncoder(options.ErrOutput)
 	encoder.SetIndent("", "  ")
-	_ = encoder.Encode(payload)
+	if err := encoder.Encode(payload); err != nil {
+		return appErr.ExitCode
+	}
 	return appErr.ExitCode
 }

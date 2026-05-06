@@ -21,21 +21,21 @@ const defaultVersion = "dev"
 var completionShells = []string{"bash", "zsh", "fish", "powershell"}
 
 type Runtime struct {
-	Args       []string
-	Environ    []string
 	Stdin      io.Reader
 	Stdout     io.Writer
 	Stderr     io.Writer
-	CWD        string
 	IsTerminal func() bool
+	CWD        string
+	Args       []string
+	Environ    []string
 }
 
 type globalOptions struct {
+	language string
 	plain    bool
 	json     bool
 	debug    bool
 	envDebug bool
-	language string
 }
 
 func Run(ctx context.Context, rt Runtime) int {
@@ -87,11 +87,11 @@ func newRootCommand(rt Runtime, lang i18n.Language, global *globalOptions) *cobr
 		Use:           "envio <command>",
 		Short:         rootShort(lang),
 		Long:          rootLong(lang),
-		Example:       rootExample(lang),
+		Example:       rootExample(),
 		Version:       defaultVersion,
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
 	}
@@ -140,23 +140,6 @@ func newCompletionCommand(lang i18n.Language, root *cobra.Command) *cobra.Comman
 	}
 	applyHelpTemplate(cmd, lang)
 	return cmd
-}
-
-func renderOptionsFromGlobals(rt Runtime, global globalOptions) (ui.Options, *command.AppError) {
-	lang, ok := i18n.Resolve(global.language)
-	if !ok {
-		return ui.Options{}, languageUnsupportedError()
-	}
-
-	mode := ui.ModeAuto
-	if global.plain {
-		mode = ui.ModePlain
-	}
-	if global.json {
-		mode = ui.ModeJSON
-	}
-
-	return renderOptionsWithLanguage(rt, mode, lang, global.envDebug || global.debug || global.json), nil
 }
 
 func renderOptionsForError(rt Runtime, global globalOptions) ui.Options {
@@ -239,16 +222,6 @@ func appErrorFromCobra(err error) *command.AppError {
 			command.SeverityError,
 		)
 	}
-}
-
-func languageUnsupportedError() *command.AppError {
-	return command.NewAppError(
-		"LANGUAGE_UNSUPPORTED",
-		"unsupported language",
-		"Use either --lang ko or --lang en.",
-		2,
-		command.SeverityError,
-	)
 }
 
 func detectLanguage(args []string, env map[string]string) i18n.Language {

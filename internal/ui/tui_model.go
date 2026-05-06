@@ -23,21 +23,21 @@ const (
 )
 
 type tuiModel struct {
-	command  command.Command
+	theme    tuiTheme
+	help     help.Model
 	ctx      context.Context
-	steps    []command.Step
+	command  command.Command
 	updates  chan command.StepUpdate
+	appErr   *command.AppError
+	lang     i18n.Language
+	keys     tuiKeyMap
+	result   command.Result
+	steps    []command.Step
 	spinner  spinner.Model
 	progress progress.Model
-	help     help.Model
-	keys     tuiKeyMap
-	theme    tuiTheme
-	result   command.Result
-	appErr   *command.AppError
-	done     bool
-	lang     i18n.Language
 	width    int
 	height   int
+	done     bool
 }
 
 func newTUIModel(ctx context.Context, cmd command.Command, lang i18n.Language) tuiModel {

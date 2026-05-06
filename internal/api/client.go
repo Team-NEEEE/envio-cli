@@ -26,11 +26,11 @@ type HTTPDoer interface {
 }
 
 type Request struct {
-	Method string
-	Path   string
+	Body   any
 	Query  url.Values
 	Header http.Header
-	Body   any
+	Method string
+	Path   string
 }
 
 type HTTPClient struct {
@@ -189,10 +189,10 @@ func newHTTPResponseError(response *http.Response, body []byte, cause error) *HT
 }
 
 type HTTPResponseError struct {
-	StatusCode  int
+	Cause       error
 	Status      string
 	BodySnippet string
-	Cause       error
+	StatusCode  int
 }
 
 func (e *HTTPResponseError) Error() string {

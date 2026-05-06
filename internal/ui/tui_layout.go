@@ -62,7 +62,7 @@ func (m tuiModel) renderTUIResult(result command.Result) string {
 	}
 	for _, item := range localizedSummary(result.Summary, m.lang) {
 		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf("%s: %s", m.theme.label.Render(item.Label), item.Value))
+		fmt.Fprintf(&b, "%s: %s", m.theme.label.Render(item.Label), item.Value)
 	}
 	for _, warning := range localizedWarnings(result.Warnings, m.lang) {
 		hint := warning.Hint

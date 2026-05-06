@@ -8,10 +8,10 @@ import (
 )
 
 type Response[T any] struct {
-	Success   bool           `json:"success"`
+	Timestamp time.Time      `json:"timestamp"`
 	Data      T              `json:"data"`
 	Error     *ErrorResponse `json:"error,omitempty"`
-	Timestamp time.Time      `json:"timestamp"`
+	Success   bool           `json:"success"`
 }
 
 type RawResponse = Response[json.RawMessage]

@@ -155,8 +155,8 @@ func TestRunUnknownCommandDebugUsesJSONContract(t *testing.T) {
 			Code     string `json:"code"`
 			Message  string `json:"message"`
 			Hint     string `json:"hint"`
-			ExitCode int    `json:"exitCode"`
 			Severity string `json:"severity"`
+			ExitCode int    `json:"exitCode"`
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(errOut.Bytes(), &payload); err != nil {

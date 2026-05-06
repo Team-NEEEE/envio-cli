@@ -87,7 +87,10 @@ func TestTUITracksWindowSizeAndHelpState(t *testing.T) {
 
 	model := newTUIModel(context.Background(), stubCommand{}, "ko")
 	updated, _ := model.Update(tea.WindowSizeMsg{Width: 42, Height: 20})
-	model = updated.(tuiModel)
+	model, ok := updated.(tuiModel)
+	if !ok {
+		t.Fatalf("updated model = %T, want tuiModel", updated)
+	}
 	if model.width != 42 || model.help.Width != 42 {
 		t.Fatalf("window size was not applied: width=%d help=%d", model.width, model.help.Width)
 	}
@@ -96,7 +99,10 @@ func TestTUITracksWindowSizeAndHelpState(t *testing.T) {
 	}
 
 	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-	model = updated.(tuiModel)
+	model, ok = updated.(tuiModel)
+	if !ok {
+		t.Fatalf("updated model = %T, want tuiModel", updated)
+	}
 	if !model.help.ShowAll {
 		t.Fatalf("help key should toggle full help")
 	}
@@ -110,7 +116,10 @@ func TestTUIDoneEnablesConfirmKey(t *testing.T) {
 		t.Fatalf("confirm key should be disabled while command is running")
 	}
 	updated, _ := model.Update(doneMsg{result: command.Result{Title: "Command completed"}})
-	model = updated.(tuiModel)
+	model, ok := updated.(tuiModel)
+	if !ok {
+		t.Fatalf("updated model = %T, want tuiModel", updated)
+	}
 	if !model.keys.Confirm.Enabled() {
 		t.Fatalf("confirm key should be enabled after command completion")
 	}
