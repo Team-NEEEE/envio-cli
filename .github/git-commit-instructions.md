@@ -25,10 +25,11 @@
 Apply rules in this order when there is conflict.
 
 1. FACTUAL_ACCURACY: never invent facts, tickets, validation results, or changed behavior.
-2. USER_SCOPE: respect the staged files, selected files, or user-provided commit scope.
-3. LOGICAL_PURPOSE: express why the selected changes belong together.
-4. FORMAT_CONVENTION: follow gitmoji, type, subject, body, and Ref formatting.
-5. BREVITY: keep the message concise after the above priorities are satisfied.
+2. MANDATORY_REF: if a verified Jira key exists, the final commit message must include `Ref:`.
+3. USER_SCOPE: respect the staged files, selected files, or user-provided commit scope.
+4. LOGICAL_PURPOSE: express why the selected changes belong together.
+5. FORMAT_CONVENTION: follow gitmoji, type, subject, body, and Ref formatting.
+6. BREVITY: keep the message concise after the above priorities are satisfied.
 
 ## EVIDENCE_RULES
 
@@ -42,7 +43,27 @@ Apply rules in this order when there is conflict.
 - Do not include local tool artifacts such as `.omc/`, temporary files, or Windows artifact files such as `nul` unless the user explicitly selects them.
 - Before omitting `Ref:`, inspect the current or selected branch name when branch information is available.
 - A JIRA key found in the current or selected branch name is verified evidence and must be included as `Ref:`.
+- When the current branch contains a Jira key, a final commit message without `Ref: #<jira-ticket>` is invalid and must be regenerated before returning.
 - If the selected scope is ambiguous, switch to COMMIT_SPLIT_ADVICE instead of forcing one final commit message.
+
+## MANDATORY_REF_GATE
+
+Run this gate before returning any FINAL_COMMIT_MESSAGE.
+
+1. Inspect the current branch name when branch information is available.
+2. Extract every Jira key matching `S14P[0-9]{2}[A-Z][0-9]{3}-[0-9]+`.
+3. If one or more keys exist, use WITH_VERIFIED_TICKET.
+4. Append `Ref: #<jira-ticket>` after one empty line at the end of the message.
+5. If the draft message has no `Ref:` while a verified key exists, discard it and regenerate.
+
+This gate overrides brevity, body length preferences, and examples without `Ref:`.
+
+For the current repository branch pattern:
+
+```text
+branch: chore/S14P31A209-40
+required final line: Ref: #S14P31A209-40
+```
 
 ## MESSAGE_SCHEMA
 
@@ -74,6 +95,8 @@ Ref: #<jira-ticket>
 - `Ref:` section is allowed only when the ticket is verified.
 - Use WITH_VERIFIED_TICKET when the user-provided task, selected branch, or current branch contains a JIRA key.
 - Use WITHOUT_VERIFIED_TICKET only when no user-provided, selected-branch, current-branch, or task-context ticket exists.
+- Do not return WITHOUT_VERIFIED_TICKET when the current branch name contains a JIRA key.
+- If a branch key exists and the message lacks `Ref:`, the schema check fails.
 - Never output placeholder text such as `#<jira-ticket>`, `TICKET-NUMBER`, or `TODO`.
 - Subject and body must be Korean.
 - Type must be lowercase English.
@@ -106,7 +129,50 @@ Ref: #<jira-ticket>
 - If the selected scope only changes Markdown instruction, convention, guide, README, or documentation files, use `docs`, not `feat`.
 - If the selected scope changes `.github/copilot-instructions.md`, `.github/*instructions*.md`, or other AI guidance Markdown files, use `docs`, not `feat`.
 - If the selected scope changes executable automation, workflow YAML, IDE settings, or tool configuration behavior, use `config`.
+- If the selected scope only changes production/test code to satisfy lint, vet, static analysis, or CI quality gates without changing intended behavior, use `refactor`.
 - Never use `feat` for instruction documents unless the same selected scope also changes production behavior.
+
+### QUALITY_GATE_FIX_RULES
+
+When the selected diff exists because `golangci-lint`, `go vet`, tests, or build
+failed, classify and describe the commit by the failed quality gate and the
+behavioral contract being preserved.
+
+- Prefer subjects such as `Go 품질 게이트 지적 사항 정리`, `lint 지적 사항 정리`, or `정적 분석 경고 정리`.
+- Body bullets must group fixes by responsibility or analyzer class, not by raw field/file movement.
+- Mention analyzer names such as `errcheck`, `revive`, `staticcheck`, `fieldalignment`, or `unused` only when they clarify the quality gate.
+- Do not make `fieldalignment` the whole commit purpose when it is only one category among several.
+- Do not list individual struct fields, function parameters, or file names as the main body unless the selected scope is truly that narrow.
+- If the same selected scope also includes README, MR draft, generated binaries, `.omc/`, or `nul`, switch to COMMIT_SPLIT_ADVICE unless the user explicitly selected only the quality-gate files.
+
+Good:
+
+```text
+♻️ refactor: Go 품질 게이트 지적 사항 정리
+
+- JSON 렌더링과 테스트 응답 작성의 에러 처리 명시
+- unused, revive, staticcheck 지적 사항을 동작 변경 없이 정리
+- fieldalignment 기준에 맞춰 내부 구조체 배치 조정
+- TUI 모델 타입 단언 검증 보강
+```
+
+Bad:
+
+```text
+♻️ refactor: 구조체 필드 순서 정리
+
+- Request 구조체의 Body 필드 위치 변경
+- HTTPResponseError 구조체의 필드 순서 조정
+- Runtime 구조체의 필드 순서 변경
+- CLI 명령어의 도움말 렌더링 함수 인자 수정
+```
+
+Reasons invalid:
+
+- The subject overfits one low-level analyzer.
+- Body is an implementation/file-field list.
+- It hides the verified reason for the change: passing the Go quality gate.
+- It omits other meaningful categories such as errcheck, unused, staticcheck, and test assertion safety.
 
 ## LOGICAL_COMMIT_SPLITTING
 
@@ -288,6 +354,8 @@ Ref: #S14P31A209-32, #S14P31A209-45
 - Do not invent, guess, or normalize unknown tickets.
 - Do not omit `Ref:` when the current or selected branch contains a JIRA key.
 - If exactly one JIRA key is found in the current branch, include it automatically.
+- If the current branch contains `S14P31A209-40`, the final commit message must end with `Ref: #S14P31A209-40`.
+- Never treat `Ref:` as optional for branches matching the Jira key pattern.
 - If the user explicitly provides a different ticket for the current commit task, use the user-provided ticket.
 - If branch and user-provided tickets conflict and the intended ticket is unclear, ask before producing a final commit message.
 - If a ticket is required but unavailable, ask for the ticket instead of producing a final commit message.
@@ -332,6 +400,8 @@ Before returning a final commit message, verify all items mentally.
 - Body does not claim unverified tests or builds.
 - `Ref:` exists only for verified tickets.
 - `Ref:` is included when the current branch contains a JIRA key.
+- If the current branch contains a JIRA key and `Ref:` is missing, do not return the message.
+- The final non-empty line is `Ref: #<verified-jira-ticket>` when exactly one branch key exists.
 - No placeholder ticket remains.
 - The message can be understood without reading the file list.
 - The selected commit scope would be natural to revert as one unit.
