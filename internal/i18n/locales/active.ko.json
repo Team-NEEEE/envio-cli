@@ -1,0 +1,76 @@
+{
+  "error": {
+    "UNKNOWN_ERROR": {
+      "message": "알 수 없는 오류가 발생했습니다.",
+      "hint": "명령을 다시 실행하거나 디버그 출력을 확인해 주세요."
+    },
+    "TUI_RENDER_FAILED": {
+      "message": "터미널 UI를 실행하지 못했습니다.",
+      "hint": "일반 출력이 필요하면 --plain 옵션으로 다시 실행해 주세요."
+    },
+    "UNKNOWN_COMMAND": {
+      "message": "지원하지 않는 명령어입니다.",
+      "hint": "`envio --help`로 사용할 수 있는 명령어를 확인해 주세요."
+    },
+    "UNKNOWN_ARGUMENT": {
+      "message": "지원하지 않는 옵션 또는 인자가 포함되어 있습니다.",
+      "hint": "`envio --help`로 사용법을 확인해 주세요."
+    },
+    "MISSING_FLAG_VALUE": {
+      "message": "옵션 값이 비어 있습니다.",
+      "hint": "옵션 뒤에 값을 함께 입력해 주세요."
+    },
+    "LANGUAGE_UNSUPPORTED": {
+      "message": "지원하지 않는 언어입니다.",
+      "hint": "--lang ko 또는 --lang en 중 하나를 사용해 주세요."
+    },
+    "CONFIG_REQUIRED": {
+      "message": "필수 설정이 누락되었습니다.",
+      "hint": "필수 설정을 확인한 뒤 명령을 다시 실행해 주세요."
+    }
+  },
+  "warning": {
+    "CONFIG_OPTIONAL": {
+      "message": "선택 설정이 비어 있습니다.",
+      "hint": "필요하면 설정 값을 추가한 뒤 다시 실행해 주세요."
+    }
+  },
+  "result": {
+    "title": {
+      "Command completed": "명령 완료"
+    }
+  },
+  "summary": {
+    "Name": "이름",
+    "Status": "상태"
+  },
+  "step": {
+    "prepare": {
+      "label": "실행 준비"
+    },
+    "execute": {
+      "label": "명령 실행"
+    },
+    "render": {
+      "label": "결과 출력"
+    },
+    "detail": {
+      "DETAIL_PREPARING": "명령 실행 환경을 확인하는 중",
+      "DETAIL_EXECUTING": "명령 작업을 실행하는 중",
+      "DETAIL_RENDERING": "출력 형식을 정리하는 중"
+    }
+  },
+  "ui": {
+    "help": {
+      "nextStep": "힌트"
+    },
+    "debug": {
+      "title": "디버그 정보"
+    },
+    "status": {
+      "OK": "성공",
+      "WARN": "경고",
+      "ERROR": "오류"
+    }
+  }
+}
