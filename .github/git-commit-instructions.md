@@ -56,13 +56,15 @@ Run this gate before returning any FINAL_COMMIT_MESSAGE.
 4. Append `Ref: #<jira-ticket>` after one empty line at the end of the message.
 5. If the draft message has no `Ref:` while a verified key exists, discard it and regenerate.
 
+The Jira key extracted from the current branch is the source of truth for branch-derived references. Example ticket values are never verified evidence and must not be copied into a final commit message.
+
 This gate overrides brevity, body length preferences, and examples without `Ref:`.
 
-For the current repository branch pattern:
+For the current repository branch pattern, resolve the key from the live branch:
 
 ```text
-branch: chore/S14P31A209-40
-required final line: Ref: #S14P31A209-40
+branch: chore/<verified-current-branch-jira-key>
+required final line: Ref: #<verified-current-branch-jira-key>
 ```
 
 ## MESSAGE_SCHEMA
@@ -330,19 +332,22 @@ Reasons invalid:
 
 A ticket is verified only when it is provided by one of these sources.
 
-- User explicitly provides the ticket.
+- User explicitly provides the ticket as the intended ticket for this commit.
 - The current branch name is visible and clearly contains a JIRA key.
 - The selected branch name is visible and clearly contains a JIRA key.
-- Existing commit scope or task context explicitly includes the ticket.
-- A user-provided candidate commit message already includes a valid `Ref:` ticket.
+- The selected staged commit scope explicitly includes the ticket in a current, intentional source file change.
+
+A ticket is not verified just because it appears in a candidate commit message, a previous generated message, a canonical example, an IDE workspace file, an MR draft, a historical note, or an untracked artifact.
 
 Branch tickets are not guesses. They are verified repository context.
+
+When exactly one Jira key is present in the current branch, that branch key takes precedence over stale or historical ticket values found elsewhere. Only an explicit user instruction for a different intended ticket may override it.
 
 ### JIRA_FORMAT
 
 ```text
-Ref: #S14P31A209-32
-Ref: #S14P31A209-32, #S14P31A209-45
+Ref: #<verified-jira-ticket>
+Ref: #<verified-jira-ticket>, #<second-verified-jira-ticket>
 ```
 
 ### JIRA_REQUIREMENTS
@@ -354,7 +359,9 @@ Ref: #S14P31A209-32, #S14P31A209-45
 - Do not invent, guess, or normalize unknown tickets.
 - Do not omit `Ref:` when the current or selected branch contains a JIRA key.
 - If exactly one JIRA key is found in the current branch, include it automatically.
-- If the current branch contains `S14P31A209-40`, the final commit message must end with `Ref: #S14P31A209-40`.
+- If the current branch contains a Jira key, the final commit message must end with that exact key in `Ref:`.
+- Re-read the current branch before generating `Ref:`; do not reuse a ticket number from any example.
+- Do not reuse `Ref:` from a candidate message unless it matches the verified current branch key or an explicit user-provided intended ticket.
 - Never treat `Ref:` as optional for branches matching the Jira key pattern.
 - If the user explicitly provides a different ticket for the current commit task, use the user-provided ticket.
 - If branch and user-provided tickets conflict and the intended ticket is unclear, ask before producing a final commit message.
@@ -364,13 +371,13 @@ Ref: #S14P31A209-32, #S14P31A209-45
 ### BRANCH_REF_EXAMPLES
 
 ```text
-branch: chore/S14P31A209-40
-Ref: #S14P31A209-40
+branch: chore/<verified-current-branch-jira-key>
+Ref: #<verified-current-branch-jira-key>
 ```
 
 ```text
-user-provided ticket: S14P31A209-41
-Ref: #S14P31A209-41
+user-provided ticket: <verified-user-provided-jira-key>
+Ref: #<verified-user-provided-jira-key>
 ```
 
 ## REPOSITORY_SPECIFIC_INTENT
@@ -408,6 +415,8 @@ Before returning a final commit message, verify all items mentally.
 
 ## CANONICAL_EXAMPLES
 
+The `Ref:` lines below are format placeholders. Replace them with the verified current branch key or user-provided key before returning a final commit message; never copy a ticket from an example.
+
 ### Go CLI module initialization
 
 ```text
@@ -417,7 +426,7 @@ Before returning a final commit message, verify all items mentally.
 - 기본 패키지 경로와 빌드 대상 구성
 - 로컬 실행 기준 명령어 정리
 
-Ref: #S14P31A209-1
+Ref: #<verified-jira-ticket>
 ```
 
 ### Common API response client
@@ -429,7 +438,7 @@ Ref: #S14P31A209-1
 - HTTP 요청 생성과 JSON 응답 디코딩 흐름 구성
 - 비표준 HTTP 응답의 status와 body snippet 보존
 
-Ref: #S14P31A209-24
+Ref: #<verified-jira-ticket>
 ```
 
 ### CLI output rendering foundation
@@ -442,7 +451,7 @@ Ref: #S14P31A209-24
 - AppError를 사용자용 hint와 디버그용 JSON으로 분리
 - 민감 요약값 숨김과 localized result/error 변환 검증 추가
 
-Ref: #S14P31A209-12
+Ref: #<verified-jira-ticket>
 ```
 
 ### Help rendering refactor
@@ -454,7 +463,7 @@ Ref: #S14P31A209-12
 - 숨김 명령어와 허용 인자 출력 흐름을 별도 책임으로 정리
 - gh 스타일 usage 렌더링 동작을 유지하도록 테스트 보강
 
-Ref: #S14P31A209-31
+Ref: #<verified-jira-ticket>
 ```
 
 ### CI configuration
@@ -466,7 +475,7 @@ Ref: #S14P31A209-31
 - 빌드 실패를 조기에 확인하도록 검증 단계를 분리
 - 워크플로우 권한과 실행 조건을 저장소 기준으로 정리
 
-Ref: #S14P31A209-40
+Ref: #<verified-jira-ticket>
 ```
 
 ### Commit instruction refinement
@@ -478,5 +487,5 @@ Ref: #S14P31A209-40
 - 검증된 변경 범위와 JIRA 번호만 커밋 메시지에 반영하도록 제한
 - 논리적 커밋 분리와 목적 중심 제목 선택 규칙 구체화
 
-Ref: #S14P31A209-41
+Ref: #<verified-jira-ticket>
 ```
