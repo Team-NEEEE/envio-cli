@@ -1,0 +1,76 @@
+{
+  "error": {
+    "UNKNOWN_ERROR": {
+      "message": "An unknown error occurred.",
+      "hint": "Run the command again or inspect debug output."
+    },
+    "TUI_RENDER_FAILED": {
+      "message": "Terminal UI failed to run.",
+      "hint": "Run again with --plain if you need plain output."
+    },
+    "UNKNOWN_COMMAND": {
+      "message": "Unsupported command.",
+      "hint": "Run `envio --help` to see available commands."
+    },
+    "UNKNOWN_ARGUMENT": {
+      "message": "Unsupported option or argument.",
+      "hint": "Run `envio --help` to see the supported syntax."
+    },
+    "MISSING_FLAG_VALUE": {
+      "message": "Missing option value.",
+      "hint": "Pass a non-empty value after the option."
+    },
+    "LANGUAGE_UNSUPPORTED": {
+      "message": "Unsupported language.",
+      "hint": "Use either --lang ko or --lang en."
+    },
+    "CONFIG_REQUIRED": {
+      "message": "Required configuration is missing.",
+      "hint": "Check the required configuration and run the command again."
+    }
+  },
+  "warning": {
+    "CONFIG_OPTIONAL": {
+      "message": "Optional configuration is missing.",
+      "hint": "Add the setting if needed, then run the command again."
+    }
+  },
+  "result": {
+    "title": {
+      "Command completed": "Command completed"
+    }
+  },
+  "summary": {
+    "Name": "Name",
+    "Status": "Status"
+  },
+  "step": {
+    "prepare": {
+      "label": "Prepare command"
+    },
+    "execute": {
+      "label": "Execute command"
+    },
+    "render": {
+      "label": "Render result"
+    },
+    "detail": {
+      "DETAIL_PREPARING": "Checking command execution context",
+      "DETAIL_EXECUTING": "Executing command work",
+      "DETAIL_RENDERING": "Preparing command output"
+    }
+  },
+  "ui": {
+    "help": {
+      "nextStep": "Hint"
+    },
+    "debug": {
+      "title": "Debug details"
+    },
+    "status": {
+      "OK": "OK",
+      "WARN": "WARN",
+      "ERROR": "ERROR"
+    }
+  }
+}
