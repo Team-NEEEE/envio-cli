@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/Team-NEEEE/envio-cli/internal/api"
+	authapi "github.com/Team-NEEEE/envio-cli/internal/api/auth"
 	"github.com/Team-NEEEE/envio-cli/internal/browser"
 	"github.com/Team-NEEEE/envio-cli/internal/config"
 	envcrypto "github.com/Team-NEEEE/envio-cli/internal/crypto"
@@ -27,49 +26,42 @@ const (
 )
 
 type LoginService struct {
-	client *api.Client
+	client    loginAPI
+	clientErr error
 }
 
 // FIXME api 요청 방식 수정
 func NewLoginService(apiURL string) *LoginService {
+	client, err := authapi.NewHTTPClient(apiURL, nil)
 	return &LoginService{
-		client: api.NewClient(apiURL),
+		client:    client,
+		clientErr: err,
 	}
 }
 
-// login cli 실행시 서버에서 받는 객체
-type LoginStartResponse struct {
-	Message        string `json:"message"`
-	LoginSessionID string `json:"loginSessionId"`
-	AuthURL        string `json:"authUrl"`
-	ExpiresIn      int    `json:"expiresIn"`
+type loginAPI interface {
+	StartLogin(context.Context) (*authapi.LoginStartResponse, error)
+	GetLoginStatus(context.Context, string) (*authapi.LoginStatusResponse, error)
+	RegisterKey(context.Context, authapi.RegisterKeyRequest) (*authapi.RegisterKeyResponse, error)
 }
+
+// login cli 실행시 서버에서 받는 객체
+type LoginStartResponse = authapi.LoginStartResponse
 
 // 서버로 풀링 후 받는 결과
-type LoginStatusResponse struct {
-	Message  string `json:"message"`
-	Status   string `json:"status"`
-	GithubID string `json:"githubId,omitempty"`
-	Username string `json:"username,omitempty"`
-}
+type LoginStatusResponse = authapi.LoginStatusResponse
 
-type RegisterKeyRequest struct {
-	LoginSessionID string `json:"loginSessionId"`
-	PublicKey      string `json:"publicKey"`
-	DeviceName     string `json:"deviceName"`
-}
+type RegisterKeyRequest = authapi.RegisterKeyRequest
 
-type RegisterKeyResponse struct {
-	Message  string `json:"message"`
-	UserID   int64  `json:"userId"`
-	GithubID string `json:"githubId"`
-	Username string `json:"username"`
-	DeviceID int64  `json:"deviceId"`
-}
+type RegisterKeyResponse = authapi.RegisterKeyResponse
 
 // TODO 전역 폴더 생성
 // 로그인 기능 구현
 func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterKeyResponse, error) {
+	if s.clientErr != nil {
+		return nil, s.clientErr
+	}
+
 	// 내부 기기 이름 확인
 	if deviceName == "" {
 		host, err := os.Hostname()
@@ -131,10 +123,8 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 // startLogin은 서버에 CLI 로그인 시작을 요청하고,
 // 브라우저에서 열 GitHub OAuth URL과 로그인 세션 ID를 받아온다.
 func (s *LoginService) startLogin(ctx context.Context) (*LoginStartResponse, error) {
-	var out LoginStartResponse
-
 	//FIXME api 요청 방식 수정
-	err := s.client.GetJSON(ctx, "/api/auth/cli/login/start?redirectType=CLI", &out)
+	out, err := s.client.StartLogin(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +137,7 @@ func (s *LoginService) startLogin(ctx context.Context) (*LoginStartResponse, err
 		return nil, errors.New("authUrl 응답이 비어 있습니다")
 	}
 
-	return &out, nil
+	return out, nil
 }
 
 func (s *LoginService) waitLoginComplete(
@@ -200,15 +190,8 @@ func (s *LoginService) waitLoginComplete(
 
 // login 상태 풀링
 func (s *LoginService) getLoginStatus(ctx context.Context, loginSessionID string) (*LoginStatusResponse, error) {
-	var out LoginStatusResponse
-
-	path := fmt.Sprintf(
-		"/api/auth/cli/login/status?loginSessionId=%s",
-		url.QueryEscape(loginSessionID),
-	)
-
 	//FIXME api 요청 방식 수정
-	err := s.client.GetJSON(ctx, path, &out)
+	out, err := s.client.GetLoginStatus(ctx, loginSessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,19 +200,17 @@ func (s *LoginService) getLoginStatus(ctx context.Context, loginSessionID string
 		return nil, errors.New("로그인 상태 응답이 비어 있습니다")
 	}
 
-	return &out, nil
+	return out, nil
 }
 
 // registerKey는 완료된 loginSessionId를 기반으로,
 // CLI 로컬에서 생성한 공개키와 기기 이름을 서버에 등록한다.
 func (s *LoginService) registerKey(ctx context.Context, req RegisterKeyRequest) (*RegisterKeyResponse, error) {
-	var out RegisterKeyResponse
-
 	//FIXME api 요청 방식 수정
-	err := s.client.PostJSON(ctx, "/api/auth/users/me/keys", req, &out)
+	out, err := s.client.RegisterKey(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	return &out, nil
+	return out, nil
 }
