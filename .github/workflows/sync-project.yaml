@@ -1,0 +1,45 @@
+name: Sync GitLab project (CLI)
+
+on:
+  push:
+    branches: [ "develop" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITLAB_TARGET_BRANCH: cli
+
+jobs:
+  sync-to-gitlab:
+    name: Push GitHub snapshot to GitLab
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push to GitLab cli branch
+        env:
+          TARGET_URL: ${{ secrets.TARGET_URL }}
+          TARGET_TOKEN_NAME: ${{ secrets.TARGET_TOKEN_NAME }}
+          TARGET_TOKEN: ${{ secrets.TARGET_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gitlab_remote_path="${TARGET_URL#https://}"
+          gitlab_remote_path="${gitlab_remote_path#http://}"
+          gitlab_remote_path="${gitlab_remote_path%/}"
+
+          git remote add gitlab "https://${TARGET_TOKEN_NAME}:${TARGET_TOKEN}@${gitlab_remote_path}"
+          git push --force gitlab "HEAD:refs/heads/${GITLAB_TARGET_BRANCH}"
+          git push --force --tags gitlab
