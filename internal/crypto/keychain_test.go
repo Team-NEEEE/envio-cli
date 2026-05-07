@@ -7,7 +7,9 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
+// TestSaveAndLoadPrivateKey 개인키 저장 후 로드 동작을 검증한다.
 func TestSaveAndLoadPrivateKey(t *testing.T) {
+	// 실제 OS keychain을 건드리지 않도록 go-keyring mock provider를 사용한다.
 	keyring.MockInit()
 
 	const privateKeyPEM = "private-key-pem"
@@ -25,7 +27,9 @@ func TestSaveAndLoadPrivateKey(t *testing.T) {
 	}
 }
 
+// TestSavePublicKey 공개키 저장 시 keychain service와 key 이름을 검증한다.
 func TestSavePublicKey(t *testing.T) {
+	// 실제 OS keychain을 건드리지 않도록 go-keyring mock provider를 사용한다.
 	keyring.MockInit()
 
 	const publicKeyPEM = "public-key-pem"
@@ -43,8 +47,10 @@ func TestSavePublicKey(t *testing.T) {
 	}
 }
 
+// TestKeychainErrors keychain 오류가 호출자에게 그대로 전달되는지 검증한다.
 func TestKeychainErrors(t *testing.T) {
 	wantErr := errors.New("keyring failed")
+	// mock provider가 항상 오류를 반환하도록 설정한다.
 	keyring.MockInitWithError(wantErr)
 
 	if err := SavePrivateKey("private-key-pem"); !errors.Is(err, wantErr) {

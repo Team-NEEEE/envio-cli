@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// TestGenerateRSAKeyPairPEM RSA 키 쌍 생성 결과가 유효한 PEM인지 검증한다.
 func TestGenerateRSAKeyPairPEM(t *testing.T) {
 	privatePEM, publicPEM, err := GenerateRSAKeyPairPEM()
 	if err != nil {
@@ -21,6 +22,7 @@ func TestGenerateRSAKeyPairPEM(t *testing.T) {
 		t.Fatal("publicPEM is empty")
 	}
 
+	// private PEM은 PKCS#1 RSA PRIVATE KEY 형식이어야 한다.
 	privateBlock, rest := pem.Decode([]byte(privatePEM))
 	if privateBlock == nil {
 		t.Fatal("privatePEM is not valid PEM")
@@ -43,6 +45,7 @@ func TestGenerateRSAKeyPairPEM(t *testing.T) {
 		t.Fatalf("private key bit length = %d", got)
 	}
 
+	// public PEM은 PKIX PUBLIC KEY 형식이어야 한다.
 	publicBlock, rest := pem.Decode([]byte(publicPEM))
 	if publicBlock == nil {
 		t.Fatal("publicPEM is not valid PEM")
@@ -63,6 +66,7 @@ func TestGenerateRSAKeyPairPEM(t *testing.T) {
 	if !ok {
 		t.Fatalf("public key type = %T", parsedPublicKey)
 	}
+	// 생성된 public key가 private key에서 파생된 값인지 확인한다.
 	if publicKey.N.Cmp(privateKey.PublicKey.N) != 0 || publicKey.E != privateKey.PublicKey.E {
 		t.Fatal("public key does not match private key")
 	}
