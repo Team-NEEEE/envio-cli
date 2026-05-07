@@ -30,7 +30,6 @@ type LoginService struct {
 	clientErr error
 }
 
-// NewLoginService FIXME: API 요청 방식 수정
 func NewLoginService(apiURL string) *LoginService {
 	client, err := authapi.NewHTTPClient(apiURL, nil)
 	return &LoginService{
@@ -124,7 +123,6 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 // startLogin은 서버에 CLI 로그인 시작을 요청하고,
 // 브라우저에서 열 GitHub OAuth URL과 로그인 세션 ID를 받아온다.
 func (s *LoginService) startLogin(ctx context.Context) (*LoginStartResponse, error) {
-	// FIXME: API 요청 방식 수정
 	out, err := s.client.StartLogin(ctx)
 	if err != nil {
 		return nil, err
@@ -191,7 +189,6 @@ func (s *LoginService) waitLoginComplete(
 
 // login 상태 풀링
 func (s *LoginService) getLoginStatus(ctx context.Context, loginSessionID string) (*LoginStatusResponse, error) {
-	// FIXME: API 요청 방식 수정
 	out, err := s.client.GetLoginStatus(ctx, loginSessionID)
 	if err != nil {
 		return nil, err
@@ -207,7 +204,6 @@ func (s *LoginService) getLoginStatus(ctx context.Context, loginSessionID string
 // registerKey는 완료된 loginSessionId를 기반으로,
 // CLI 로컬에서 생성한 공개키와 기기 이름을 서버에 등록한다.
 func (s *LoginService) registerKey(ctx context.Context, req RegisterKeyRequest) (*RegisterKeyResponse, error) {
-	// FIXME: API 요청 방식 수정
 	out, err := s.client.RegisterKey(ctx, req)
 	if err != nil {
 		return nil, err
