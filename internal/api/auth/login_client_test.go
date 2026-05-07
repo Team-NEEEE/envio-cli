@@ -58,11 +58,25 @@ func TestClientGetLoginStatus(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet {
+			t.Fatalf("request.Method = %s", request.Method)
+		}
 		if request.URL.Path != loginStatusPath {
 			t.Fatalf("request.URL.Path = %s", request.URL.Path)
 		}
-		if got := request.URL.Query().Get("loginSessionId"); got != "session-1" {
-			t.Fatalf("loginSessionId = %q", got)
+		if got := request.Header.Get("Content-Type"); got != "application/json" {
+			t.Fatalf("Content-Type = %q", got)
+		}
+		if got := request.URL.Query().Get("loginSessionId"); got != "" {
+			t.Fatalf("query loginSessionId = %q", got)
+		}
+
+		var body LoginStatusRequest
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		if body.LoginSessionID != "session-1" {
+			t.Fatalf("body = %#v", body)
 		}
 
 		writer.Header().Set("Content-Type", "application/json")

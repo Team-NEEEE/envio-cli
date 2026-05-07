@@ -10,8 +10,12 @@ type LoginStartResponse struct {
 type LoginStatusResponse struct {
 	Message  string `json:"message"`
 	Status   string `json:"status"`
-	GithubID string `json:"githubId,omitempty"`
-	Username string `json:"username,omitempty"`
+	GithubID string `json:"githubId"`
+	Email    string `json:"email"`
+}
+
+type LoginStatusRequest struct {
+	LoginSessionID string `json:"loginSessionId"`
 }
 
 type RegisterKeyRequest struct {
@@ -24,6 +28,6 @@ type RegisterKeyResponse struct {
 	Message  string `json:"message"`
 	UserID   int64  `json:"userId"`
 	GithubID string `json:"githubId"`
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	DeviceID int64  `json:"deviceId"`
 }
