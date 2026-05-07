@@ -59,6 +59,7 @@ type RegisterKeyResponse = authapi.RegisterKeyResponse
 // Login GitHub OAuth 로그인 후 로컬 세션과 키를 저장한다.
 // TODO: 전역 폴더 생성
 func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterKeyResponse, error) {
+	// TODO 로그인이 이미 진행된 상태일 경우 처리
 	if s.clientErr != nil {
 		return nil, s.clientErr
 	}
@@ -104,15 +105,19 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		DeviceName:     deviceName,
 	})
 	if err != nil {
+		// TODO 전송 실패 시 재시도 로직 필요
 		return nil, err
 	}
 
 	// TODO: 공개키 저장 위치
-	if err := config.SaveLocalSession(config.Session{
+	// TODO 저장 실패 시 루트 재탐색
+	if err := config.SaveGlobalSession(config.GlobalSession{
 		UserID:     resp.UserID,
 		GithubID:   resp.GithubID,
 		DeviceID:   resp.DeviceID,
 		DeviceName: deviceName,
+		PublicKey:  publicPEM,
+		PrivateKey: privatePEM,
 	}); err != nil {
 		return nil, err
 	}
