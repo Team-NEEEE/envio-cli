@@ -86,7 +86,7 @@ func TestClientGetLoginStatus(t *testing.T) {
 				"message": "completed",
 				"status": "COMPLETED",
 				"githubId": "octocat",
-				"username": "Mona"
+				"email": "mona@example.com"
 			},
 			"error": null,
 			"timestamp": "2026-05-06T00:04:31.127Z"
@@ -139,7 +139,7 @@ func TestClientRegisterKey(t *testing.T) {
 				"message": "registered",
 				"userId": 10,
 				"githubId": "octocat",
-				"username": "Mona",
+				"email": "mona@example.com",
 				"deviceId": 20
 			},
 			"error": null,

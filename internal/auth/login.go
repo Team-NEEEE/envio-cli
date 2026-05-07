@@ -110,7 +110,6 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 	if err := config.SaveLocalSession(config.Session{
 		UserID:     resp.UserID,
 		GithubID:   resp.GithubID,
-		Username:   resp.Username,
 		DeviceID:   resp.DeviceID,
 		DeviceName: deviceName,
 	}); err != nil {
