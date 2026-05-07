@@ -30,7 +30,7 @@ type LoginService struct {
 	clientErr error
 }
 
-// FIXME api 요청 방식 수정
+// NewLoginService FIXME: API 요청 방식 수정
 func NewLoginService(apiURL string) *LoginService {
 	client, err := authapi.NewHTTPClient(apiURL, nil)
 	return &LoginService{
@@ -45,18 +45,20 @@ type loginAPI interface {
 	RegisterKey(context.Context, authapi.RegisterKeyRequest) (*authapi.RegisterKeyResponse, error)
 }
 
-// login cli 실행시 서버에서 받는 객체
+// LoginStartResponse login cli 실행시 서버에서 받는 객체
 type LoginStartResponse = authapi.LoginStartResponse
 
-// 서버로 풀링 후 받는 결과
+// LoginStatusResponse 서버로 풀링 후 받는 결과
 type LoginStatusResponse = authapi.LoginStatusResponse
 
+// RegisterKeyRequest 공개키 등록 API 요청이다.
 type RegisterKeyRequest = authapi.RegisterKeyRequest
 
+// RegisterKeyResponse 공개키 등록 API 응답이다.
 type RegisterKeyResponse = authapi.RegisterKeyResponse
 
-// TODO 전역 폴더 생성
-// 로그인 기능 구현
+// Login GitHub OAuth 로그인 후 로컬 세션과 키를 저장한다.
+// TODO: 전역 폴더 생성
 func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterKeyResponse, error) {
 	if s.clientErr != nil {
 		return nil, s.clientErr
@@ -106,7 +108,7 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		return nil, err
 	}
 
-	//TODO 공개키 저장 위치
+	// TODO: 공개키 저장 위치
 	if err := config.SaveLocalSession(config.Session{
 		UserID:     resp.UserID,
 		GithubID:   resp.GithubID,
@@ -122,7 +124,7 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 // startLogin은 서버에 CLI 로그인 시작을 요청하고,
 // 브라우저에서 열 GitHub OAuth URL과 로그인 세션 ID를 받아온다.
 func (s *LoginService) startLogin(ctx context.Context) (*LoginStartResponse, error) {
-	//FIXME api 요청 방식 수정
+	// FIXME: API 요청 방식 수정
 	out, err := s.client.StartLogin(ctx)
 	if err != nil {
 		return nil, err
@@ -189,7 +191,7 @@ func (s *LoginService) waitLoginComplete(
 
 // login 상태 풀링
 func (s *LoginService) getLoginStatus(ctx context.Context, loginSessionID string) (*LoginStatusResponse, error) {
-	//FIXME api 요청 방식 수정
+	// FIXME: API 요청 방식 수정
 	out, err := s.client.GetLoginStatus(ctx, loginSessionID)
 	if err != nil {
 		return nil, err
@@ -205,7 +207,7 @@ func (s *LoginService) getLoginStatus(ctx context.Context, loginSessionID string
 // registerKey는 완료된 loginSessionId를 기반으로,
 // CLI 로컬에서 생성한 공개키와 기기 이름을 서버에 등록한다.
 func (s *LoginService) registerKey(ctx context.Context, req RegisterKeyRequest) (*RegisterKeyResponse, error) {
-	//FIXME api 요청 방식 수정
+	// FIXME: API 요청 방식 수정
 	out, err := s.client.RegisterKey(ctx, req)
 	if err != nil {
 		return nil, err
