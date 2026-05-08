@@ -60,7 +60,6 @@ type RegisterKeyResponse = authapi.RegisterKeyResponse
 
 // Login GitHub OAuth 로그인 후 로컬 세션과 키를 저장한다.
 func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterKeyResponse, error) {
-	// TODO 로그인이 이미 진행된 상태일 경우 처리
 	loggedIn, err := config.HasGlobalSession()
 	if err != nil {
 		return nil, fmt.Errorf("기존 로그인 세션 확인 실패: %w", err)
@@ -118,7 +117,6 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		return nil, err
 	}
 
-	// TODO 저장 실패 시 루트 재탐색
 	if err := config.SaveGlobalSession(config.GlobalSession{
 		UserID:     resp.UserID,
 		GithubID:   resp.GithubID,
