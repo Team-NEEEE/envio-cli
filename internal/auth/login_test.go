@@ -3,10 +3,14 @@ package auth
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	authapi "github.com/Team-NEEEE/envio-cli/internal/api/auth"
+	"github.com/Team-NEEEE/envio-cli/internal/config"
 )
 
 type fakeLoginAPI struct {
@@ -50,10 +54,9 @@ func (f *fakeLoginAPI) RegisterKey(
 }
 
 func TestLoginReturnsClientError(t *testing.T) {
-	t.Parallel()
-
 	// NewLoginService에서 HTTP 클라이언트 생성에 실패한 경우에는 브라우저 실행,
 	// 키 생성, 로컬 세션 저장 같은 후속 부작용 없이 즉시 에러를 반환해야 한다.
+	setUserConfigDir(t)
 	wantErr := errors.New("invalid api url")
 	service := &LoginService{clientErr: wantErr}
 
@@ -63,6 +66,42 @@ func TestLoginReturnsClientError(t *testing.T) {
 	}
 	if got != nil {
 		t.Fatalf("Login() response = %#v, want nil", got)
+	}
+}
+
+func TestLoginReturnsAlreadyLoggedInBeforeServerRequest(t *testing.T) {
+	userConfigDir := setUserConfigDir(t)
+	if err := config.SaveGlobalSession(config.GlobalSession{
+		UserID:     10,
+		GithubID:   "octocat",
+		DeviceID:   20,
+		DeviceName: "desktop",
+		PublicKey:  "public-key",
+	}); err != nil {
+		t.Fatalf("SaveGlobalSession() error = %v", err)
+	}
+
+	client := &fakeLoginAPI{
+		startResp: &authapi.LoginStartResponse{
+			LoginSessionID: "session-1",
+			AuthURL:        "https://example.com/auth",
+			ExpiresIn:      300,
+		},
+	}
+	service := &LoginService{client: client}
+
+	got, err := service.Login(context.Background(), "desktop")
+	if !errors.Is(err, ErrAlreadyLoggedIn) {
+		t.Fatalf("Login() error = %v, want %v", err, ErrAlreadyLoggedIn)
+	}
+	if got != nil {
+		t.Fatalf("Login() response = %#v, want nil", got)
+	}
+	if client.started {
+		t.Fatal("StartLogin should not be called when global session already exists")
+	}
+	if _, err := os.Stat(filepath.Join(userConfigDir, "envio", "session.json")); err != nil {
+		t.Fatalf("session file should exist: %v", err)
 	}
 }
 
@@ -342,5 +381,22 @@ func TestRegisterKeyReturnsClientError(t *testing.T) {
 	}
 	if got != nil {
 		t.Fatalf("registerKey() response = %#v, want nil", got)
+	}
+}
+
+func setUserConfigDir(t *testing.T) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	switch runtime.GOOS {
+	case "windows":
+		t.Setenv("AppData", dir)
+		return dir
+	case "darwin":
+		t.Setenv("HOME", dir)
+		return filepath.Join(dir, "Library", "Application Support")
+	default:
+		t.Setenv("XDG_CONFIG_HOME", dir)
+		return dir
 	}
 }

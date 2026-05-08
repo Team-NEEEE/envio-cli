@@ -72,6 +72,57 @@ func TestSaveGlobalSessionWritesSessionJSON(t *testing.T) {
 	}
 }
 
+func TestHasGlobalSession(t *testing.T) {
+	setUserConfigDir(t)
+
+	hasSession, err := HasGlobalSession()
+	if err != nil {
+		t.Fatalf("HasGlobalSession() error = %v", err)
+	}
+	if hasSession {
+		t.Fatal("HasGlobalSession() = true, want false when session file does not exist")
+	}
+
+	if err := SaveGlobalSession(GlobalSession{
+		UserID:     10,
+		GithubID:   "octocat",
+		DeviceID:   20,
+		DeviceName: "desktop",
+		PublicKey:  "public-key",
+	}); err != nil {
+		t.Fatalf("SaveGlobalSession() error = %v", err)
+	}
+
+	hasSession, err = HasGlobalSession()
+	if err != nil {
+		t.Fatalf("HasGlobalSession() error = %v", err)
+	}
+	if !hasSession {
+		t.Fatal("HasGlobalSession() = false, want true for valid session")
+	}
+}
+
+func TestHasGlobalSessionRejectsIncompleteSession(t *testing.T) {
+	setUserConfigDir(t)
+
+	if err := SaveGlobalSession(GlobalSession{
+		UserID:     10,
+		GithubID:   "octocat",
+		DeviceName: "desktop",
+		PublicKey:  "public-key",
+	}); err != nil {
+		t.Fatalf("SaveGlobalSession() error = %v", err)
+	}
+
+	hasSession, err := HasGlobalSession()
+	if err != nil {
+		t.Fatalf("HasGlobalSession() error = %v", err)
+	}
+	if hasSession {
+		t.Fatal("HasGlobalSession() = true, want false for incomplete session")
+	}
+}
+
 func TestWriteJSONFileCreatesParentDirectoryAndReplacesFile(t *testing.T) {
 	// writeJSONFile은 SaveGlobalSession의 실제 파일 쓰기 경계다.
 	// 부모 디렉터리가 있는 기존 파일을 대상으로 호출했을 때 새 JSON으로 원자적 교체가 되는지 검증한다.

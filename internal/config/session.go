@@ -25,6 +25,43 @@ type GlobalConfig struct {
 	GlobalSession GlobalSession `json:"globalSession"`
 }
 
+func LoadGlobalSession() (GlobalSession, error) {
+	path, err := GlobalSessionPath()
+	if err != nil {
+		return GlobalSession{}, err
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return GlobalSession{}, err
+	}
+
+	var cfg GlobalConfig
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return GlobalSession{}, fmt.Errorf("global session JSON decode failed: %w", err)
+	}
+	return cfg.GlobalSession, nil
+}
+
+func HasGlobalSession() (bool, error) {
+	session, err := LoadGlobalSession()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return session.Valid(), nil
+}
+
+func (s GlobalSession) Valid() bool {
+	return s.UserID != 0 &&
+		s.GithubID != "" &&
+		s.DeviceID != 0 &&
+		s.DeviceName != "" &&
+		s.PublicKey != ""
+}
+
 func SaveGlobalSession(session GlobalSession) error {
 	path, err := GlobalSessionPath()
 	if err != nil {
