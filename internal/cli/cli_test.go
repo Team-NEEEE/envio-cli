@@ -25,13 +25,13 @@ func TestRunHelpUsesEnglishByDefault(t *testing.T) {
 	if !strings.Contains(out.String(), "USAGE") {
 		t.Fatalf("help should use gh-style usage heading: %s", out.String())
 	}
-	if strings.Contains(out.String(), "ADDITIONAL COMMANDS") {
-		t.Fatalf("help should not show command groups before user-facing commands exist: %s", out.String())
+	if !strings.Contains(out.String(), "ADDITIONAL COMMANDS") || !strings.Contains(out.String(), "login:") {
+		t.Fatalf("help should show login as a user-facing command: %s", out.String())
 	}
 	if strings.Contains(out.String(), "completion") {
 		t.Fatalf("help should hide shell completion command: %s", out.String())
 	}
-	if strings.Contains(out.String(), "api-base-url") {
+	if strings.Contains(out.String(), "api-url") {
 		t.Fatalf("help should not expose internal API base URL option: %s", out.String())
 	}
 	if strings.Contains(out.String(), "Envio는 안전한") || strings.Contains(out.String(), "shared CLI foundation") {
@@ -99,7 +99,10 @@ func TestRunUnknownCommandPlainShowsUsageAndAvailableCommands(t *testing.T) {
 	if !strings.Contains(errOut.String(), "Usage:  envio <command> [flags]") {
 		t.Fatalf("plain error should show command usage: %s", errOut.String())
 	}
-	if strings.Contains(errOut.String(), "Available commands:") || strings.Contains(errOut.String(), "completion") {
+	if !strings.Contains(errOut.String(), "Available commands:\n  login") {
+		t.Fatalf("plain error should show available user-facing commands: %s", errOut.String())
+	}
+	if strings.Contains(errOut.String(), "completion") {
 		t.Fatalf("plain error should not show hidden commands: %s", errOut.String())
 	}
 	if strings.Contains(errOut.String(), "Next step") || strings.Contains(errOut.String(), "UNKNOWN_COMMAND") {

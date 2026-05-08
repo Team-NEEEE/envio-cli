@@ -32,9 +32,18 @@ func completionShort(lang i18n.Language) string {
 
 func flagText(lang i18n.Language, name string) string {
 	if lang == i18n.Korean {
-		return koreanFlagText(name)
+		if text := koreanFlagText(name); text != "" {
+			return text
+		}
 	}
 	return englishFlagText(name)
+}
+
+func loginShort(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "GitHub OAuth로 Envio에 로그인합니다."
+	}
+	return "Log in to Envio with GitHub OAuth."
 }
 
 func koreanFlagText(name string) string {
@@ -66,6 +75,10 @@ func englishFlagText(name string) string {
 		return "Enable detailed debugging JSON"
 	case "lang":
 		return "Output language (en or ko)"
+	case "api-url":
+		return "Envio API server URL"
+	case "device-name":
+		return "CLI device name to register"
 	case "help":
 		return "Show help for command"
 	case "version":

@@ -27,6 +27,13 @@
     "CONFIG_REQUIRED": {
       "message": "필수 설정이 누락되었습니다.",
       "hint": "필수 설정을 확인한 뒤 명령을 다시 실행해 주세요."
+    },
+    "LOGIN_FAILED": {
+      "message": "로그인에 실패했습니다."
+    },
+    "ALREADY_LOGGED_IN": {
+      "message": "이미 로그인되어 있습니다.",
+      "hint": "이미 로그인되어 있습니다."
     }
   },
   "warning": {
@@ -37,12 +44,17 @@
   },
   "result": {
     "title": {
-      "Command completed": "명령 완료"
+      "Command completed": "명령 완료",
+      "Login completed": "로그인 완료"
     }
   },
   "summary": {
     "Name": "이름",
-    "Status": "상태"
+    "Status": "상태",
+    "User ID": "사용자 ID",
+    "GitHub ID": "GitHub ID",
+    "Email": "이메일",
+    "Device ID": "기기 ID"
   },
   "step": {
     "prepare": {
