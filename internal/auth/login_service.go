@@ -117,7 +117,6 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		DeviceID:   resp.DeviceID,
 		DeviceName: deviceName,
 		PublicKey:  publicPEM,
-		PrivateKey: privatePEM,
 	}); err != nil {
 		return nil, err
 	}
