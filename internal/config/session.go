@@ -19,7 +19,6 @@ type GlobalSession struct {
 	DeviceID   int64  `json:"deviceId"`
 	DeviceName string `json:"deviceName"`
 	PublicKey  string `json:"publicKey"`
-	PrivateKey string `json:"privateKey"`
 }
 
 type GlobalConfig struct {

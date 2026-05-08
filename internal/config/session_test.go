@@ -35,7 +35,6 @@ func TestSaveGlobalSessionWritesSessionJSON(t *testing.T) {
 		DeviceID:   20,
 		DeviceName: "desktop",
 		PublicKey:  "public-key",
-		PrivateKey: "private-key",
 	}
 
 	if err := SaveGlobalSession(session); err != nil {
@@ -61,6 +60,9 @@ func TestSaveGlobalSessionWritesSessionJSON(t *testing.T) {
 	}
 	if got.GlobalSession != session {
 		t.Fatalf("saved session = %#v, want %#v", got.GlobalSession, session)
+	}
+	if strings.Contains(string(raw), "privateKey") || strings.Contains(string(raw), "private-key") {
+		t.Fatalf("session file should not include private key: %s", raw)
 	}
 
 	// writeJSONFile은 tmp 파일에 먼저 쓴 뒤 Rename으로 교체한다.
