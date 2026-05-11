@@ -33,7 +33,7 @@ type LoginService struct {
 }
 
 func NewLoginService(apiURL string) *LoginService {
-	client, err := authapi.NewHTTPClient(apiURL, nil)
+	client, err := authapi.NewHTTPClient(config.APIURLOrDefault(apiURL), nil)
 	return &LoginService{
 		client:    client,
 		clientErr: err,
