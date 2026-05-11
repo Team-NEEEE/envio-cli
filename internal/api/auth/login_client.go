@@ -64,7 +64,7 @@ func (c *Client) StartLogin(ctx context.Context) (*LoginStartResponse, error) {
 func (c *Client) GetLoginStatus(ctx context.Context, loginSessionID string) (*LoginStatusResponse, error) {
 	// 로그인 세션 ID를 body에 담아 상태 API를 호출한다.
 	response, err := c.client.Do(ctx, api.Request{
-		Method: http.MethodGet,
+		Method: http.MethodPost,
 		Path:   loginStatusPath,
 		Body: LoginStatusRequest{
 			LoginSessionID: loginSessionID,

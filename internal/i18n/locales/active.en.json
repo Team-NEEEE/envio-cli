@@ -30,13 +30,13 @@
     },
     "LOGIN_FAILED": {
       "message": "Login failed."
-    },
-    "ALREADY_LOGGED_IN": {
-      "message": "Already logged in.",
-      "hint": "Already logged in."
     }
   },
   "warning": {
+    "ALREADY_LOGGED_IN": {
+      "message": "Already logged in.",
+      "hint": "Already logged in."
+    },
     "CONFIG_OPTIONAL": {
       "message": "Optional configuration is missing.",
       "hint": "Add the setting if needed, then run the command again."
@@ -45,7 +45,8 @@
   "result": {
     "title": {
       "Command completed": "Command completed",
-      "Login completed": "Login completed"
+      "Login completed": "Login completed",
+      "Already logged in": "Already logged in"
     }
   },
   "summary": {

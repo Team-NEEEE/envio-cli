@@ -30,13 +30,13 @@
     },
     "LOGIN_FAILED": {
       "message": "로그인에 실패했습니다."
-    },
-    "ALREADY_LOGGED_IN": {
-      "message": "이미 로그인되어 있습니다.",
-      "hint": "이미 로그인되어 있습니다."
     }
   },
   "warning": {
+    "ALREADY_LOGGED_IN": {
+      "message": "이미 로그인되어 있습니다.",
+      "hint": "이미 로그인되어 있습니다."
+    },
     "CONFIG_OPTIONAL": {
       "message": "선택 설정이 비어 있습니다.",
       "hint": "필요하면 설정 값을 추가한 뒤 다시 실행해 주세요."
@@ -45,7 +45,8 @@
   "result": {
     "title": {
       "Command completed": "명령 완료",
-      "Login completed": "로그인 완료"
+      "Login completed": "로그인 완료",
+      "Already logged in": "이미 로그인되어 있습니다."
     }
   },
   "summary": {

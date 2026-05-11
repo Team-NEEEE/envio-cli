@@ -13,7 +13,10 @@ import (
 	"github.com/Team-NEEEE/envio-cli/internal/ui"
 )
 
-const loginResultTitle = "Login completed"
+const (
+	loginResultTitle          = "Login completed"
+	loginAlreadyLoggedInTitle = "Already logged in"
+)
 
 type loginOptions struct {
 	deviceName string
@@ -76,16 +79,21 @@ func (r loginRunner) Run(ctx context.Context, reporter command.Reporter) (comman
 	reporter.UpdateStep(command.StepUpdate{ID: "login-start", Status: command.StatusRunning})
 	response, err := r.service.Login(ctx, r.deviceName)
 	if err != nil {
-		reporter.UpdateStep(command.StepUpdate{ID: "login-start", Status: command.StatusError})
 		if errors.Is(err, auth.ErrAlreadyLoggedIn) {
-			return command.Result{}, command.NewAppError(
-				"ALREADY_LOGGED_IN",
-				"already logged in",
-				err.Error(),
-				1,
-				command.SeverityWarning,
-			)
+			reporter.UpdateStep(command.StepUpdate{ID: "login-start", Status: command.StatusWarning})
+			reporter.UpdateStep(command.StepUpdate{ID: "login-save-session", Status: command.StatusWarning})
+			return command.Result{
+				Title: loginAlreadyLoggedInTitle,
+				Warnings: []command.Warning{
+					{
+						Code:    "ALREADY_LOGGED_IN",
+						Message: "already logged in",
+						Hint:    err.Error(),
+					},
+				},
+			}, nil
 		}
+		reporter.UpdateStep(command.StepUpdate{ID: "login-start", Status: command.StatusError})
 		return command.Result{}, command.NewAppError(
 			"LOGIN_FAILED",
 			"login failed",
@@ -103,7 +111,6 @@ func (r loginRunner) Run(ctx context.Context, reporter command.Reporter) (comman
 		Summary: []command.SummaryItem{
 			{Label: "User ID", Value: fmt.Sprintf("%d", response.UserID)},
 			{Label: "GitHub ID", Value: response.GithubID},
-			{Label: "Email", Value: response.Email},
 			{Label: "Device ID", Value: fmt.Sprintf("%d", response.DeviceID)},
 		},
 	}, nil

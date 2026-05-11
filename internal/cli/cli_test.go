@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/Team-NEEEE/envio-cli/internal/config"
 )
 
 func TestRunHelpUsesEnglishByDefault(t *testing.T) {
@@ -138,6 +141,41 @@ func TestRunInvalidCompletionShellShowsUsageAndAvailableValues(t *testing.T) {
 	}
 }
 
+func TestRunLoginAlreadyLoggedInReturnsWarning(t *testing.T) {
+	setCLIUserConfigDir(t)
+	if err := config.SaveGlobalSession(config.GlobalSession{
+		UserID:     10,
+		GithubID:   "octocat",
+		DeviceID:   20,
+		DeviceName: "desktop",
+		PublicKey:  "public-key",
+	}); err != nil {
+		t.Fatalf("SaveGlobalSession() error = %v", err)
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--plain", "login"},
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        t.TempDir(),
+		IsTerminal: func() bool { return false },
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, want 0, stderr = %s", code, errOut.String())
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("stderr = %s, want empty", errOut.String())
+	}
+	if !strings.Contains(out.String(), "WARN: Already logged in") {
+		t.Fatalf("login should render warning result: %s", out.String())
+	}
+	if strings.Contains(out.String(), "Email") {
+		t.Fatalf("login warning should not render email: %s", out.String())
+	}
+}
+
 func TestRunUnknownCommandDebugUsesJSONContract(t *testing.T) {
 	t.Parallel()
 
@@ -212,5 +250,19 @@ func TestRunCompletionPowershell(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "powershell completion for envio") {
 		t.Fatalf("completion output = %s", out.String())
+	}
+}
+
+func setCLIUserConfigDir(t *testing.T) {
+	t.Helper()
+
+	dir := t.TempDir()
+	switch runtime.GOOS {
+	case "windows":
+		t.Setenv("AppData", dir)
+	case "darwin":
+		t.Setenv("HOME", dir)
+	default:
+		t.Setenv("XDG_CONFIG_HOME", dir)
 	}
 }

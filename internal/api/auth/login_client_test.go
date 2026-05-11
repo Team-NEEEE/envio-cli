@@ -63,7 +63,7 @@ func TestClientGetLoginStatus(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		// loginSessionId는 query가 아니라 JSON body로 전송해야 한다.
-		if request.Method != http.MethodGet {
+		if request.Method != http.MethodPost {
 			t.Fatalf("request.Method = %s", request.Method)
 		}
 		if request.URL.Path != loginStatusPath {
