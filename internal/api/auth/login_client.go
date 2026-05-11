@@ -3,7 +3,6 @@ package authapi
 import (
 	"context"
 	"net/http"
-	"net/url"
 
 	"github.com/Team-NEEEE/envio-cli/internal/api"
 )
@@ -39,15 +38,11 @@ func NewHTTPClient(baseURL string, doer api.HTTPDoer) (*Client, error) {
 
 // StartLogin 로그인 시작 API를 호출한다.
 func (c *Client) StartLogin(ctx context.Context) (*LoginStartResponse, error) {
-	// net/url.Values를 사용해 query escape를 안전하게 처리한다.
-	query := url.Values{}
-	query.Set("redirectType", "CLI")
 
 	// 공통 api.Client를 사용한다.
 	response, err := c.client.Do(ctx, api.Request{
-		Method: http.MethodGet,
+		Method: http.MethodPost,
 		Path:   loginStartPath,
-		Query:  query,
 	})
 	if err != nil {
 		return nil, err
