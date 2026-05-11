@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/Team-NEEEE/envio-cli/internal/config"
 )
 
 func TestRunHelpUsesEnglishByDefault(t *testing.T) {
@@ -25,13 +28,13 @@ func TestRunHelpUsesEnglishByDefault(t *testing.T) {
 	if !strings.Contains(out.String(), "USAGE") {
 		t.Fatalf("help should use gh-style usage heading: %s", out.String())
 	}
-	if strings.Contains(out.String(), "ADDITIONAL COMMANDS") {
-		t.Fatalf("help should not show command groups before user-facing commands exist: %s", out.String())
+	if !strings.Contains(out.String(), "ADDITIONAL COMMANDS") || !strings.Contains(out.String(), "login:") {
+		t.Fatalf("help should show login as a user-facing command: %s", out.String())
 	}
 	if strings.Contains(out.String(), "completion") {
 		t.Fatalf("help should hide shell completion command: %s", out.String())
 	}
-	if strings.Contains(out.String(), "api-base-url") {
+	if strings.Contains(out.String(), "api-url") {
 		t.Fatalf("help should not expose internal API base URL option: %s", out.String())
 	}
 	if strings.Contains(out.String(), "Envio는 안전한") || strings.Contains(out.String(), "shared CLI foundation") {
@@ -99,7 +102,10 @@ func TestRunUnknownCommandPlainShowsUsageAndAvailableCommands(t *testing.T) {
 	if !strings.Contains(errOut.String(), "Usage:  envio <command> [flags]") {
 		t.Fatalf("plain error should show command usage: %s", errOut.String())
 	}
-	if strings.Contains(errOut.String(), "Available commands:") || strings.Contains(errOut.String(), "completion") {
+	if !strings.Contains(errOut.String(), "Available commands:\n  login") {
+		t.Fatalf("plain error should show available user-facing commands: %s", errOut.String())
+	}
+	if strings.Contains(errOut.String(), "completion") {
 		t.Fatalf("plain error should not show hidden commands: %s", errOut.String())
 	}
 	if strings.Contains(errOut.String(), "Next step") || strings.Contains(errOut.String(), "UNKNOWN_COMMAND") {
@@ -132,6 +138,41 @@ func TestRunInvalidCompletionShellShowsUsageAndAvailableValues(t *testing.T) {
 	}
 	if strings.Contains(errOut.String(), "Hint:") || strings.Contains(errOut.String(), "UNKNOWN_ARGUMENT") {
 		t.Fatalf("plain input error should not use UI hint/debug shape: %s", errOut.String())
+	}
+}
+
+func TestRunLoginAlreadyLoggedInReturnsWarning(t *testing.T) {
+	setCLIUserConfigDir(t)
+	if err := config.SaveGlobalSession(config.GlobalSession{
+		UserID:     10,
+		GithubID:   "octocat",
+		DeviceID:   20,
+		DeviceName: "desktop",
+		PublicKey:  "public-key",
+	}); err != nil {
+		t.Fatalf("SaveGlobalSession() error = %v", err)
+	}
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--plain", "login"},
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        t.TempDir(),
+		IsTerminal: func() bool { return false },
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, want 0, stderr = %s", code, errOut.String())
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("stderr = %s, want empty", errOut.String())
+	}
+	if !strings.Contains(out.String(), "WARN: Already logged in") {
+		t.Fatalf("login should render warning result: %s", out.String())
+	}
+	if strings.Contains(out.String(), "Email") {
+		t.Fatalf("login warning should not render email: %s", out.String())
 	}
 }
 
@@ -209,5 +250,19 @@ func TestRunCompletionPowershell(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "powershell completion for envio") {
 		t.Fatalf("completion output = %s", out.String())
+	}
+}
+
+func setCLIUserConfigDir(t *testing.T) {
+	t.Helper()
+
+	dir := t.TempDir()
+	switch runtime.GOOS {
+	case "windows":
+		t.Setenv("AppData", dir)
+	case "darwin":
+		t.Setenv("HOME", dir)
+	default:
+		t.Setenv("XDG_CONFIG_HOME", dir)
 	}
 }

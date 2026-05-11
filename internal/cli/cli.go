@@ -32,6 +32,7 @@ type Runtime struct {
 
 type globalOptions struct {
 	language string
+	apiURL   string
 	plain    bool
 	json     bool
 	debug    bool
@@ -44,6 +45,7 @@ func Run(ctx context.Context, rt Runtime) int {
 	env := config.EnvMap(rt.Environ)
 	lang := detectLanguage(rt.Args, env)
 	global := globalOptions{
+		apiURL:   config.APIURLFromEnv(env),
 		plain:    hasBoolFlag(rt.Args, "--plain"),
 		json:     hasBoolFlag(rt.Args, "--json"),
 		debug:    hasBoolFlag(rt.Args, "--debug"),
@@ -52,7 +54,7 @@ func Run(ctx context.Context, rt Runtime) int {
 	}
 
 	exitCode := 0
-	root := newRootCommand(rt, lang, &global)
+	root := newRootCommand(rt, lang, &global, &exitCode)
 	root.SetArgs(rt.Args)
 
 	if err := root.ExecuteContext(ctx); err != nil {
@@ -82,7 +84,7 @@ func normalizeRuntime(rt Runtime) Runtime {
 	return rt
 }
 
-func newRootCommand(rt Runtime, lang i18n.Language, global *globalOptions) *cobra.Command {
+func newRootCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitCode *int) *cobra.Command {
 	root := &cobra.Command{
 		Use:           "envio <command>",
 		Short:         rootShort(lang),
@@ -109,7 +111,12 @@ func newRootCommand(rt Runtime, lang i18n.Language, global *globalOptions) *cobr
 	flags.BoolVar(&global.json, "json", global.json, flagText(lang, "json"))
 	flags.BoolVar(&global.debug, "debug", global.debug, flagText(lang, "debug"))
 	flags.StringVar(&global.language, "lang", global.language, flagText(lang, "lang"))
+	flags.StringVar(&global.apiURL, "api-url", global.apiURL, flagText(lang, "api-url"))
+	if err := flags.MarkHidden("api-url"); err != nil {
+		panic(fmt.Sprintf("hide api-url flag: %v", err))
+	}
 
+	root.AddCommand(newLoginCommand(rt, lang, global, exitCode))
 	root.AddCommand(newCompletionCommand(lang, root))
 	return root
 }

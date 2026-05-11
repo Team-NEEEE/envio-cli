@@ -27,9 +27,16 @@
     "CONFIG_REQUIRED": {
       "message": "Required configuration is missing.",
       "hint": "Check the required configuration and run the command again."
+    },
+    "LOGIN_FAILED": {
+      "message": "Login failed."
     }
   },
   "warning": {
+    "ALREADY_LOGGED_IN": {
+      "message": "Already logged in.",
+      "hint": "Already logged in."
+    },
     "CONFIG_OPTIONAL": {
       "message": "Optional configuration is missing.",
       "hint": "Add the setting if needed, then run the command again."
@@ -37,12 +44,18 @@
   },
   "result": {
     "title": {
-      "Command completed": "Command completed"
+      "Command completed": "Command completed",
+      "Login completed": "Login completed",
+      "Already logged in": "Already logged in"
     }
   },
   "summary": {
     "Name": "Name",
-    "Status": "Status"
+    "Status": "Status",
+    "User ID": "User ID",
+    "GitHub ID": "GitHub ID",
+    "Email": "Email",
+    "Device ID": "Device ID"
   },
   "step": {
     "prepare": {
