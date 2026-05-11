@@ -67,7 +67,7 @@ func TestGenerateRSAKeyPairPEM(t *testing.T) {
 		t.Fatalf("public key type = %T", parsedPublicKey)
 	}
 	// 생성된 public key가 private key에서 파생된 값인지 확인한다.
-	if publicKey.N.Cmp(privateKey.PublicKey.N) != 0 || publicKey.E != privateKey.PublicKey.E {
+	if publicKey.N.Cmp(privateKey.N) != 0 || publicKey.E != privateKey.E {
 		t.Fatal("public key does not match private key")
 	}
 }

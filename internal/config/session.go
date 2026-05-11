@@ -14,11 +14,11 @@ const (
 
 // GlobalSession json으로 직렬화 해야하기 때문에 string 타입으로 설정
 type GlobalSession struct {
-	UserID     int64  `json:"userId"`
 	GithubID   string `json:"githubId"`
-	DeviceID   int64  `json:"deviceId"`
 	DeviceName string `json:"deviceName"`
 	PublicKey  string `json:"publicKey"`
+	UserID     int64  `json:"userId"`
+	DeviceID   int64  `json:"deviceId"`
 }
 
 type GlobalConfig struct {

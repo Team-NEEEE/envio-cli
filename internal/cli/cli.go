@@ -112,7 +112,9 @@ func newRootCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitC
 	flags.BoolVar(&global.debug, "debug", global.debug, flagText(lang, "debug"))
 	flags.StringVar(&global.language, "lang", global.language, flagText(lang, "lang"))
 	flags.StringVar(&global.apiURL, "api-url", defaultAPIURL(global.apiURL), flagText(lang, "api-url"))
-	_ = flags.MarkHidden("api-url")
+	if err := flags.MarkHidden("api-url"); err != nil {
+		panic(fmt.Sprintf("hide api-url flag: %v", err))
+	}
 
 	root.AddCommand(newLoginCommand(rt, lang, global, exitCode))
 	root.AddCommand(newCompletionCommand(lang, root))

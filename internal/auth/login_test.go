@@ -15,21 +15,21 @@ import (
 
 type fakeLoginAPI struct {
 	// startResp/startErr는 StartLogin 호출 결과를 테스트 케이스별로 제어한다.
-	startResp *authapi.LoginStartResponse
 	startErr  error
-	started   bool
+	startResp *authapi.LoginStartResponse
 
 	// statusResp/statusErr는 로그인 상태 조회 결과를 제어하고,
 	// statusID는 서비스가 올바른 loginSessionID를 전달했는지 확인하는 데 사용한다.
-	statusResp *authapi.LoginStatusResponse
 	statusErr  error
 	statusID   string
+	statusResp *authapi.LoginStatusResponse
 
 	// registerResp/registerErr는 공개키 등록 결과를 제어하고,
 	// registerReq는 LoginService가 API 경계로 넘긴 요청 본문을 검증하는 데 사용한다.
-	registerResp *authapi.RegisterKeyResponse
 	registerErr  error
+	registerResp *authapi.RegisterKeyResponse
 	registerReq  authapi.RegisterKeyRequest
+	started      bool
 }
 
 func (f *fakeLoginAPI) StartLogin(context.Context) (*authapi.LoginStartResponse, error) {
@@ -196,10 +196,10 @@ func TestGetLoginStatus(t *testing.T) {
 	// getLoginStatus는 API 응답을 받아 LoginService가 처리할 수 있는 상태값인지 확인한다.
 	// 빈 status는 이후 상태 머신에서 의미가 없으므로 여기서 에러로 변환되어야 한다.
 	tests := []struct {
-		name        string
 		client      *fakeLoginAPI
-		wantErr     bool
+		name        string
 		wantErrText string
+		wantErr     bool
 	}{
 		{
 			name: "success",

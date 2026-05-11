@@ -26,8 +26,8 @@ type RegisterKeyRequest struct {
 
 type RegisterKeyResponse struct {
 	Message  string `json:"message"`
-	UserID   int64  `json:"userId"`
 	GithubID string `json:"githubId"`
 	Email    string `json:"email"`
+	UserID   int64  `json:"userId"`
 	DeviceID int64  `json:"deviceId"`
 }
