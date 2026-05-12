@@ -18,3 +18,4 @@ coverage.txt
 
 # 4. 개인 문서 및 설정 파일
 .my-docs/
+.mr-drafts

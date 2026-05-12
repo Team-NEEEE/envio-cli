@@ -3,7 +3,7 @@ package authapi
 type LoginStartResponse struct {
 	Message        string `json:"message"`
 	LoginSessionID string `json:"loginSessionId"`
-	AuthURL        string `json:"authUrl"`
+	AuthURL        string `json:"loginUrl"`
 	ExpiresIn      int    `json:"expiresIn"`
 }
 

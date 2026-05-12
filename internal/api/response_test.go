@@ -76,3 +76,32 @@ func TestDecodeDataUnmarshalsCommonResponseData(t *testing.T) {
 		t.Fatalf("data.ProjectID = %q", data.ProjectID)
 	}
 }
+
+func TestResponseUnmarshalsBackendTimestampWithoutZoneAsKST(t *testing.T) {
+	t.Parallel()
+
+	for _, timestamp := range []string{
+		"2026-05-11 19:47:40",
+		"2026-05-11T19:47:40",
+	} {
+		t.Run(timestamp, func(t *testing.T) {
+			t.Parallel()
+
+			payload := []byte(`{
+				"success": true,
+				"data": null,
+				"error": null,
+				"timestamp": "` + timestamp + `"
+			}`)
+
+			var response RawResponse
+			if err := json.Unmarshal(payload, &response); err != nil {
+				t.Fatalf("json.Unmarshal() error = %v", err)
+			}
+
+			if got := response.Timestamp.Format(time.RFC3339); got != "2026-05-11T19:47:40+09:00" {
+				t.Fatalf("response.Timestamp = %s", got)
+			}
+		})
+	}
+}
