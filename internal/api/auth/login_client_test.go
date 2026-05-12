@@ -14,15 +14,12 @@ func TestClientStartLogin(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		// 로그인 시작 요청은 GET 메서드와 redirectType query를 사용해야 한다.
-		if request.Method != http.MethodGet {
+		// 로그인 시작 요청은 POST 메서드를 사용해야 한다.
+		if request.Method != http.MethodPost {
 			t.Fatalf("request.Method = %s", request.Method)
 		}
 		if request.URL.Path != loginStartPath {
 			t.Fatalf("request.URL.Path = %s", request.URL.Path)
-		}
-		if got := request.URL.Query().Get("redirectType"); got != "CLI" {
-			t.Fatalf("redirectType = %q", got)
 		}
 
 		writer.Header().Set("Content-Type", "application/json")
@@ -31,7 +28,7 @@ func TestClientStartLogin(t *testing.T) {
 			"data": {
 				"message": "login started",
 				"loginSessionId": "session-1",
-				"authUrl": "https://github.com/login/oauth/authorize",
+				"loginUrl": "https://github.com/login/oauth/authorize",
 				"expiresIn": 300
 			},
 			"error": null,
@@ -54,6 +51,9 @@ func TestClientStartLogin(t *testing.T) {
 	// 공통 응답의 data 필드가 LoginStartResponse로 디코딩되는지 확인한다.
 	if response.LoginSessionID != "session-1" {
 		t.Fatalf("response.LoginSessionID = %q", response.LoginSessionID)
+	}
+	if response.AuthURL != "https://github.com/login/oauth/authorize" {
+		t.Fatalf("response.AuthURL = %q", response.AuthURL)
 	}
 }
 
