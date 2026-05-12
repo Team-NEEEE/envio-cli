@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -69,5 +72,54 @@ func TestGenerateRSAKeyPairPEM(t *testing.T) {
 	// 생성된 public key가 private key에서 파생된 값인지 확인한다.
 	if publicKey.N.Cmp(privateKey.N) != 0 || publicKey.E != privateKey.E {
 		t.Fatal("public key does not match private key")
+	}
+}
+
+func TestGenerateRSAKeyPairForLogin(t *testing.T) {
+	privatePEM, publicKey, err := GenerateRSAKeyPairForLogin()
+	if err != nil {
+		t.Fatalf("GenerateRSAKeyPairForLogin() error = %v", err)
+	}
+
+	privateBlock, rest := pem.Decode([]byte(privatePEM))
+	if privateBlock == nil {
+		t.Fatal("privatePEM is not valid PEM")
+	}
+	if len(bytes.TrimSpace(rest)) != 0 {
+		t.Fatalf("privatePEM has trailing data: %q", string(rest))
+	}
+	if privateBlock.Type != "RSA PRIVATE KEY" {
+		t.Fatalf("private block type = %q", privateBlock.Type)
+	}
+
+	privateKey, err := x509.ParsePKCS1PrivateKey(privateBlock.Bytes)
+	if err != nil {
+		t.Fatalf("parse private key: %v", err)
+	}
+	if err := privateKey.Validate(); err != nil {
+		t.Fatalf("validate private key: %v", err)
+	}
+
+	pattern := regexp.MustCompile(`^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp(256|384|521))\s+[A-Za-z0-9+/=]+(?:\s+.*)?$`)
+	if !pattern.MatchString(publicKey) {
+		t.Fatalf("publicKey = %q", publicKey)
+	}
+	if strings.Contains(publicKey, "BEGIN PUBLIC KEY") {
+		t.Fatalf("publicKey should be SSH format, got PEM-like value: %q", publicKey)
+	}
+
+	parts := strings.Fields(publicKey)
+	if len(parts) != 2 {
+		t.Fatalf("publicKey fields = %d, want 2", len(parts))
+	}
+	if parts[0] != "ssh-rsa" {
+		t.Fatalf("publicKey type = %q", parts[0])
+	}
+	blob, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatalf("decode publicKey base64: %v", err)
+	}
+	if !bytes.Contains(blob, []byte("ssh-rsa")) {
+		t.Fatalf("publicKey blob does not contain ssh-rsa marker")
 	}
 }

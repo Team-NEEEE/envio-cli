@@ -105,6 +105,29 @@ func TestLoginReturnsAlreadyLoggedInBeforeServerRequest(t *testing.T) {
 	}
 }
 
+func TestLoginRejectsTooLongDeviceNameBeforeServerRequest(t *testing.T) {
+	setUserConfigDir(t)
+	client := &fakeLoginAPI{
+		startResp: &authapi.LoginStartResponse{
+			LoginSessionID: "session-1",
+			AuthURL:        "https://example.com/auth",
+			ExpiresIn:      300,
+		},
+	}
+	service := &LoginService{client: client}
+
+	got, err := service.Login(context.Background(), strings.Repeat("a", maxDeviceNameLength+1))
+	if err == nil || !strings.Contains(err.Error(), "deviceName") {
+		t.Fatalf("Login() error = %v, want deviceName error", err)
+	}
+	if got != nil {
+		t.Fatalf("Login() response = %#v, want nil", got)
+	}
+	if client.started {
+		t.Fatal("StartLogin should not be called with invalid deviceName")
+	}
+}
+
 func TestStartLogin(t *testing.T) {
 	t.Parallel()
 
@@ -270,13 +293,20 @@ func TestWaitLoginCompleteHandlesTerminalStatuses(t *testing.T) {
 	// COMPLETED는 대소문자와 무관하게 성공해야 하고, EXPIRED/FAILED/알 수 없는 상태는
 	// 즉시 에러로 종료되어야 한다.
 	tests := []struct {
-		name    string
-		status  string
-		wantErr string
+		name     string
+		status   string
+		githubID string
+		wantErr  string
 	}{
 		{
-			name:   "completed",
-			status: "completed",
+			name:     "success",
+			status:   "success",
+			githubID: "octocat",
+		},
+		{
+			name:    "empty github id on success",
+			status:  "success",
+			wantErr: "githubId",
 		},
 		{
 			name:    "expired",
@@ -302,7 +332,8 @@ func TestWaitLoginCompleteHandlesTerminalStatuses(t *testing.T) {
 
 			client := &fakeLoginAPI{
 				statusResp: &authapi.LoginStatusResponse{
-					Status: tt.status,
+					Status:   tt.status,
+					GithubID: tt.githubID,
 				},
 			}
 			service := &LoginService{client: client}
@@ -348,7 +379,8 @@ func TestRegisterKey(t *testing.T) {
 	service := &LoginService{client: client}
 	req := authapi.RegisterKeyRequest{
 		LoginSessionID: "session-1",
-		PublicKey:      "public-key",
+		GithubID:       "octocat",
+		PublicKey:      "ssh-rsa AAAA",
 		DeviceName:     "desktop",
 	}
 

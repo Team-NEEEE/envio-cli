@@ -20,6 +20,7 @@ type LoginStatusRequest struct {
 
 type RegisterKeyRequest struct {
 	LoginSessionID string `json:"loginSessionId"`
+	GithubID       string `json:"githubId"`
 	PublicKey      string `json:"publicKey"`
 	DeviceName     string `json:"deviceName"`
 }
