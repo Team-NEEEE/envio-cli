@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	authapi "github.com/Team-NEEEE/envio-cli/internal/api/auth"
 	"github.com/Team-NEEEE/envio-cli/internal/browser"
@@ -16,13 +17,14 @@ import (
 
 // 로그인 풀링 상태와 timeout 설정
 const (
-	loginStatusPending   = "PENDING"
-	loginStatusCompleted = "COMPLETED"
-	loginStatusFailed    = "FAILED"
-	loginStatusExpired   = "EXPIRED"
+	loginStatusPending = "PENDING"
+	loginStatusSuccess = "SUCCESS"
+	loginStatusFailed  = "FAILED"
+	loginStatusExpired = "EXPIRED"
 
 	defaultLoginTimeout = 5 * time.Minute
 	loginPollInterval   = 2 * time.Second
+	maxDeviceNameLength = 255
 )
 
 var ErrAlreadyLoggedIn = errors.New("이미 로그인되어 있습니다")
@@ -80,6 +82,12 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		}
 		deviceName = host
 	}
+	if deviceName == "" {
+		return nil, errors.New("deviceName이 비어 있습니다")
+	}
+	if utf8.RuneCountInString(deviceName) > maxDeviceNameLength {
+		return nil, fmt.Errorf("deviceName은 %d자 이하여야 합니다", maxDeviceNameLength)
+	}
 
 	// 서버로 로그인 요청
 	startResp, err := s.startLogin(ctx)
@@ -91,12 +99,13 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		return nil, fmt.Errorf("브라우저 열기 실패: %w", err)
 	}
 
-	if _, err := s.waitLoginComplete(ctx, startResp.LoginSessionID, startResp.ExpiresIn); err != nil {
+	statusResp, err := s.waitLoginComplete(ctx, startResp.LoginSessionID, startResp.ExpiresIn)
+	if err != nil {
 		return nil, err
 	}
 
 	// 공개키, 비밀키 생성
-	privatePEM, publicPEM, err := envcrypto.GenerateRSAKeyPairPEM()
+	privatePEM, publicKey, err := envcrypto.GenerateRSAKeyPairForLogin()
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +118,8 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 	// 서버에 공개키와 device 저장
 	resp, err := s.registerKey(ctx, RegisterKeyRequest{
 		LoginSessionID: startResp.LoginSessionID,
-		PublicKey:      publicPEM,
+		GithubID:       statusResp.GithubID,
+		PublicKey:      publicKey,
 		DeviceName:     deviceName,
 	})
 	if err != nil {
@@ -122,7 +132,7 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		GithubID:   resp.GithubID,
 		DeviceID:   resp.DeviceID,
 		DeviceName: deviceName,
-		PublicKey:  publicPEM,
+		PublicKey:  publicKey,
 	}); err != nil {
 		return nil, err
 	}
@@ -173,7 +183,10 @@ func (s *LoginService) waitLoginComplete(
 
 		status := strings.ToUpper(statusResp.Status)
 
-		if status == loginStatusCompleted {
+		if status == loginStatusSuccess {
+			if statusResp.GithubID == "" {
+				return nil, errors.New("githubId 응답이 비어 있습니다")
+			}
 			return statusResp, nil
 		}
 

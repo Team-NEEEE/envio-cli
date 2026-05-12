@@ -89,7 +89,7 @@ func TestClientGetLoginStatus(t *testing.T) {
 			"success": true,
 			"data": {
 				"message": "completed",
-				"status": "COMPLETED",
+				"status": "SUCCESS",
 				"githubId": "octocat",
 				"email": "mona@example.com"
 			},
@@ -111,7 +111,7 @@ func TestClientGetLoginStatus(t *testing.T) {
 		t.Fatalf("GetLoginStatus() error = %v", err)
 	}
 	// 서버 상태 문자열이 응답 구조체로 전달되는지 확인한다.
-	if response.Status != "COMPLETED" {
+	if response.Status != "SUCCESS" {
 		t.Fatalf("response.Status = %q", response.Status)
 	}
 }
@@ -136,7 +136,10 @@ func TestClientRegisterKey(t *testing.T) {
 		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 			t.Fatalf("decode request body: %v", err)
 		}
-		if body.LoginSessionID != "session-1" || body.PublicKey != "public-key" || body.DeviceName != "desktop" {
+		if body.LoginSessionID != "session-1" ||
+			body.GithubID != "octocat" ||
+			body.PublicKey != "ssh-rsa AAAA" ||
+			body.DeviceName != "desktop" {
 			t.Fatalf("body = %#v", body)
 		}
 
@@ -165,7 +168,8 @@ func TestClientRegisterKey(t *testing.T) {
 
 	response, err := client.RegisterKey(context.Background(), RegisterKeyRequest{
 		LoginSessionID: "session-1",
-		PublicKey:      "public-key",
+		GithubID:       "octocat",
+		PublicKey:      "ssh-rsa AAAA",
 		DeviceName:     "desktop",
 	})
 	if err != nil {
