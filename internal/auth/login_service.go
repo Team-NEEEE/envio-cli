@@ -17,10 +17,10 @@ import (
 
 // 로그인 풀링 상태와 timeout 설정
 const (
-	loginStatusPending   = "PENDING"
-	loginStatusCompleted = "SUCCESS"
-	loginStatusFailed    = "FAILED"
-	loginStatusExpired   = "EXPIRED"
+	loginStatusPending = "PENDING"
+	loginStatusSuccess = "SUCCESS"
+	loginStatusFailed  = "FAILED"
+	loginStatusExpired = "EXPIRED"
 
 	defaultLoginTimeout = 5 * time.Minute
 	loginPollInterval   = 2 * time.Second
@@ -183,7 +183,7 @@ func (s *LoginService) waitLoginComplete(
 
 		status := strings.ToUpper(statusResp.Status)
 
-		if status == loginStatusCompleted {
+		if status == loginStatusSuccess {
 			if statusResp.GithubID == "" {
 				return nil, errors.New("githubId 응답이 비어 있습니다")
 			}

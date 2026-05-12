@@ -228,7 +228,7 @@ func TestGetLoginStatus(t *testing.T) {
 			name: "success",
 			client: &fakeLoginAPI{
 				statusResp: &authapi.LoginStatusResponse{
-					Status:   loginStatusCompleted,
+					Status:   loginStatusSuccess,
 					GithubID: "octocat",
 					Email:    "mona@example.com",
 				},
@@ -275,7 +275,7 @@ func TestGetLoginStatus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("getLoginStatus() error = %v", err)
 			}
-			if got.Status != loginStatusCompleted {
+			if got.Status != loginStatusSuccess {
 				t.Fatalf("getLoginStatus() response = %#v", got)
 			}
 			// 로그인 상태 조회는 반드시 startLogin에서 받은 loginSessionID를 그대로 사용해야 한다.
