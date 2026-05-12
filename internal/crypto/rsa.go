@@ -78,18 +78,38 @@ func encodeRSAPublicKeySSH(publicKey *rsa.PublicKey) (string, error) {
 	}
 
 	blob := make([]byte, 0, 3+4+3+4+256)
-	blob = appendSSHString(blob, []byte("ssh-rsa"))
-	blob = appendSSHString(blob, marshalSSHMPInt(big.NewInt(int64(publicKey.E))))
-	blob = appendSSHString(blob, marshalSSHMPInt(publicKey.N))
+	var err error
+	if blob, err = appendSSHString(blob, []byte("ssh-rsa")); err != nil {
+		return "", err
+	}
+	if blob, err = appendSSHString(blob, marshalSSHMPInt(big.NewInt(int64(publicKey.E)))); err != nil {
+		return "", err
+	}
+	if blob, err = appendSSHString(blob, marshalSSHMPInt(publicKey.N)); err != nil {
+		return "", err
+	}
 
 	return "ssh-rsa " + base64.StdEncoding.EncodeToString(blob), nil
 }
 
-func appendSSHString(dst []byte, value []byte) []byte {
+func appendSSHString(dst []byte, value []byte) ([]byte, error) {
+	lengthValue, err := uint32Length(value)
+	if err != nil {
+		return nil, err
+	}
+
 	var length [4]byte
-	binary.BigEndian.PutUint32(length[:], uint32(len(value)))
+	binary.BigEndian.PutUint32(length[:], lengthValue)
 	dst = append(dst, length[:]...)
-	return append(dst, value...)
+	return append(dst, value...), nil
+}
+
+func uint32Length(value []byte) (uint32, error) {
+	valueLength := len(value)
+	if uint64(valueLength) > uint64(^uint32(0)) {
+		return 0, fmt.Errorf("SSH string length exceeds uint32: %d", valueLength)
+	}
+	return uint32(valueLength), nil
 }
 
 func marshalSSHMPInt(value *big.Int) []byte {
