@@ -4,11 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/Team-NEEEE/envio-cli/internal/config"
+	envcrypto "github.com/Team-NEEEE/envio-cli/internal/crypto"
 )
 
 func TestRunHelpUsesEnglishByDefault(t *testing.T) {
@@ -102,7 +107,9 @@ func TestRunUnknownCommandPlainShowsUsageAndAvailableCommands(t *testing.T) {
 	if !strings.Contains(errOut.String(), "Usage:  envio <command> [flags]") {
 		t.Fatalf("plain error should show command usage: %s", errOut.String())
 	}
-	if !strings.Contains(errOut.String(), "Available commands:\n  login") {
+	if !strings.Contains(errOut.String(), "Available commands:") ||
+		!strings.Contains(errOut.String(), "login") ||
+		!strings.Contains(errOut.String(), "create") {
 		t.Fatalf("plain error should show available user-facing commands: %s", errOut.String())
 	}
 	if strings.Contains(errOut.String(), "completion") {
@@ -138,6 +145,192 @@ func TestRunInvalidCompletionShellShowsUsageAndAvailableValues(t *testing.T) {
 	}
 	if strings.Contains(errOut.String(), "Hint:") || strings.Contains(errOut.String(), "UNKNOWN_ARGUMENT") {
 		t.Fatalf("plain input error should not use UI hint/debug shape: %s", errOut.String())
+	}
+}
+
+func TestRunCreateInputErrorsShowUsage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "missing repository URL",
+			args: []string{"create"},
+			want: "repository URL is required",
+		},
+		{
+			name: "positional and repo flag together",
+			args: []string{"create", "https://github.com/Team-NEEEE/envio-cli", "--repo", "https://github.com/Team-NEEEE/envio-cli"},
+			want: "use either repository-url argument or --repo",
+		},
+		{
+			name: "too many args",
+			args: []string{"create", "https://github.com/Team-NEEEE/envio-cli", "extra"},
+			want: "accepts at most 1 arg(s), received 2",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var out bytes.Buffer
+			var errOut bytes.Buffer
+			code := Run(context.Background(), Runtime{
+				Args:   tt.args,
+				Stdout: &out,
+				Stderr: &errOut,
+				CWD:    t.TempDir(),
+			})
+			if code != 2 {
+				t.Fatalf("Run() exit = %d, want 2", code)
+			}
+			if !strings.Contains(errOut.String(), tt.want) {
+				t.Fatalf("stderr = %s, want containing %q", errOut.String(), tt.want)
+			}
+			if !strings.Contains(errOut.String(), "Usage:  envio create <repository-url> [flags]") {
+				t.Fatalf("stderr should include create usage: %s", errOut.String())
+			}
+		})
+	}
+}
+
+func TestRunCreateRepositoryMismatchDoesNotCallAPI(t *testing.T) {
+	setCLIUserConfigDir(t)
+	saveValidCLISession(t)
+	cwd := initGitRepository(t, "git@github.com:Team-NEEEE/envio-cli.git")
+	called := false
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--plain", "--api-url", server.URL, "create", "https://github.com/Team-NEEEE/envio-server"},
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        cwd,
+		IsTerminal: func() bool { return false },
+	})
+	if code != 1 {
+		t.Fatalf("Run() exit = %d, want 1, stdout = %s, stderr = %s", code, out.String(), errOut.String())
+	}
+	if called {
+		t.Fatal("API server should not be called when repository context mismatches")
+	}
+	if !strings.Contains(errOut.String(), "Current repository: Team-NEEEE/envio-cli") ||
+		!strings.Contains(errOut.String(), "Input repository: Team-NEEEE/envio-server") {
+		t.Fatalf("stderr should include normalized repository hint: %s", errOut.String())
+	}
+}
+
+func TestRunCreatePlainSuccessDoesNotExposeKeys(t *testing.T) {
+	setCLIUserConfigDir(t)
+	saveValidCLISession(t)
+	cwd := initGitRepository(t, "git@github.com:Team-NEEEE/envio-cli.git")
+	_, publicPEM, err := envcrypto.GenerateRSAKeyPairPEM()
+	if err != nil {
+		t.Fatalf("GenerateRSAKeyPairPEM() error = %v", err)
+	}
+
+	var createCalled bool
+	var saveCalled bool
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		switch request.URL.Path {
+		case "/api/v1/cli/create":
+			createCalled = true
+			if request.Method != http.MethodPost {
+				t.Fatalf("create method = %s", request.Method)
+			}
+			if _, err := io.Copy(io.Discard, request.Body); err != nil {
+				t.Fatalf("read create body: %v", err)
+			}
+			_ = json.NewEncoder(writer).Encode(map[string]any{
+				"success": true,
+				"data": map[string]any{
+					"message":        "created",
+					"projectId":      1,
+					"projectName":    "envio-cli",
+					"githubRepoName": "envio-cli",
+					"installationId": 9,
+					"members": []map[string]any{
+						{
+							"userId":       10,
+							"userDeviceId": 20,
+							"githubId":     "octocat",
+							"publicKey":    publicPEM,
+							"projectRole":  "ADMIN",
+						},
+					},
+				},
+				"error":     nil,
+				"timestamp": "2026-05-06T00:04:31.127Z",
+			})
+		case "/api/projects/1/wrapped-keys":
+			saveCalled = true
+			if request.Method != http.MethodPut {
+				t.Fatalf("save method = %s", request.Method)
+			}
+			var body struct {
+				WrappedKeys []struct {
+					EncryptedKey string `json:"encryptedKey"`
+					UserID       int64  `json:"userId"`
+					UserDeviceID int64  `json:"userDeviceId"`
+				} `json:"wrappedKeys"`
+			}
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+				t.Fatalf("decode save body: %v", err)
+			}
+			if len(body.WrappedKeys) != 1 || body.WrappedKeys[0].EncryptedKey == "" {
+				t.Fatalf("save body = %#v", body)
+			}
+			_ = json.NewEncoder(writer).Encode(map[string]any{
+				"success": true,
+				"data": map[string]any{
+					"message":      "saved",
+					"projectId":    1,
+					"updatedCount": 1,
+				},
+				"error":     nil,
+				"timestamp": "2026-05-06T00:04:31.127Z",
+			})
+		default:
+			t.Fatalf("unexpected path = %s", request.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--plain", "--api-url", server.URL, "create", "https://github.com/Team-NEEEE/envio-cli.git"},
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        cwd,
+		IsTerminal: func() bool { return false },
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	if !createCalled || !saveCalled {
+		t.Fatalf("createCalled=%v saveCalled=%v", createCalled, saveCalled)
+	}
+	if !strings.Contains(out.String(), "OK: Create completed") ||
+		!strings.Contains(out.String(), "Project ID: 1") ||
+		!strings.Contains(out.String(), "Wrapped key targets: 1") {
+		t.Fatalf("stdout = %s", out.String())
+	}
+	if strings.Contains(out.String(), "BEGIN PUBLIC KEY") ||
+		strings.Contains(out.String(), "encryptedKey") ||
+		strings.Contains(out.String(), "wrappedKeys") {
+		t.Fatalf("create output leaked key material: %s", out.String())
 	}
 }
 
@@ -264,5 +457,43 @@ func setCLIUserConfigDir(t *testing.T) {
 		t.Setenv("HOME", dir)
 	default:
 		t.Setenv("XDG_CONFIG_HOME", dir)
+	}
+}
+
+func saveValidCLISession(t *testing.T) {
+	t.Helper()
+
+	if err := config.SaveGlobalSession(config.GlobalSession{
+		UserID:     10,
+		GithubID:   "octocat",
+		DeviceID:   20,
+		DeviceName: "desktop",
+		PublicKey:  "public-key",
+	}); err != nil {
+		t.Fatalf("SaveGlobalSession() error = %v", err)
+	}
+}
+
+func initGitRepository(t *testing.T, originURL string) string {
+	t.Helper()
+
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("git executable not available: %v", err)
+	}
+
+	dir := t.TempDir()
+	runGit(t, dir, "init")
+	runGit(t, dir, "remote", "add", "origin", originURL)
+	return dir
+}
+
+func runGit(t *testing.T, cwd string, args ...string) {
+	t.Helper()
+
+	allArgs := append([]string{"-C", cwd}, args...)
+	cmd := exec.Command("git", allArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s error = %v, output = %s", strings.Join(args, " "), err, string(output))
 	}
 }

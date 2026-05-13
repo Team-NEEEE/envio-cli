@@ -30,6 +30,33 @@
     },
     "LOGIN_FAILED": {
       "message": "로그인에 실패했습니다."
+    },
+    "LOGIN_REQUIRED": {
+      "message": "로그인이 필요합니다.",
+      "hint": "프로젝트를 생성하기 전에 `envio login`을 실행해 주세요."
+    },
+    "GIT_REPOSITORY_REQUIRED": {
+      "message": "origin 원격 저장소가 있는 Git 저장소가 필요합니다.",
+      "hint": "origin 원격 저장소가 있는 Git 저장소 안에서 이 명령을 실행해 주세요."
+    },
+    "REPOSITORY_URL_INVALID": {
+      "message": "저장소 URL 형식이 올바르지 않습니다.",
+      "hint": "https://github.com/owner/repo 형식의 GitHub 저장소 URL을 사용해 주세요."
+    },
+    "REPOSITORY_CONTEXT_MISMATCH": {
+      "message": "입력한 저장소 URL이 현재 Git 저장소와 일치하지 않습니다."
+    },
+    "CREATE_PROJECT_FAILED": {
+      "message": "프로젝트 생성에 실패했습니다."
+    },
+    "WRAP_PROJECT_KEY_FAILED": {
+      "message": "프로젝트 키 wrapping에 실패했습니다."
+    },
+    "SAVE_WRAPPED_KEYS_FAILED": {
+      "message": "wrapped key 등록에 실패했습니다."
+    },
+    "CREATE_RESPONSE_INVALID": {
+      "message": "프로젝트 생성 응답이 올바르지 않습니다."
     }
   },
   "warning": {
@@ -46,7 +73,8 @@
     "title": {
       "Command completed": "명령 완료",
       "Login completed": "로그인 완료",
-      "Already logged in": "이미 로그인되어 있습니다."
+      "Already logged in": "이미 로그인되어 있습니다.",
+      "Create completed": "프로젝트 생성 완료"
     }
   },
   "summary": {
@@ -55,7 +83,13 @@
     "User ID": "사용자 ID",
     "GitHub ID": "GitHub ID",
     "Email": "이메일",
-    "Device ID": "기기 ID"
+    "Device ID": "기기 ID",
+    "Project ID": "프로젝트 ID",
+    "Project Name": "프로젝트 이름",
+    "GitHub Repository": "GitHub 저장소",
+    "Local Repository": "로컬 저장소",
+    "Wrapped Key Targets": "wrapped key 대상 수",
+    "Updated Count": "업데이트 수"
   },
   "step": {
     "prepare": {
@@ -66,6 +100,18 @@
     },
     "render": {
       "label": "결과 출력"
+    },
+    "check-repository": {
+      "label": "저장소 확인"
+    },
+    "create-project": {
+      "label": "프로젝트 생성"
+    },
+    "wrap-project-key": {
+      "label": "프로젝트 키 wrapping"
+    },
+    "save-wrapped-keys": {
+      "label": "wrapped key 등록"
     },
     "detail": {
       "DETAIL_PREPARING": "명령 실행 환경을 확인하는 중",

@@ -30,6 +30,33 @@
     },
     "LOGIN_FAILED": {
       "message": "Login failed."
+    },
+    "LOGIN_REQUIRED": {
+      "message": "Login is required.",
+      "hint": "Run `envio login` before creating a project."
+    },
+    "GIT_REPOSITORY_REQUIRED": {
+      "message": "A Git repository with an origin remote is required.",
+      "hint": "Run this command inside a Git repository with an origin remote."
+    },
+    "REPOSITORY_URL_INVALID": {
+      "message": "Repository URL is invalid.",
+      "hint": "Use a GitHub repository URL such as https://github.com/owner/repo."
+    },
+    "REPOSITORY_CONTEXT_MISMATCH": {
+      "message": "Repository URL does not match the current Git repository."
+    },
+    "CREATE_PROJECT_FAILED": {
+      "message": "Project creation failed."
+    },
+    "WRAP_PROJECT_KEY_FAILED": {
+      "message": "Project key wrapping failed."
+    },
+    "SAVE_WRAPPED_KEYS_FAILED": {
+      "message": "Wrapped key registration failed."
+    },
+    "CREATE_RESPONSE_INVALID": {
+      "message": "Project creation response is invalid."
     }
   },
   "warning": {
@@ -46,7 +73,8 @@
     "title": {
       "Command completed": "Command completed",
       "Login completed": "Login completed",
-      "Already logged in": "Already logged in"
+      "Already logged in": "Already logged in",
+      "Create completed": "Create completed"
     }
   },
   "summary": {
@@ -55,7 +83,13 @@
     "User ID": "User ID",
     "GitHub ID": "GitHub ID",
     "Email": "Email",
-    "Device ID": "Device ID"
+    "Device ID": "Device ID",
+    "Project ID": "Project ID",
+    "Project Name": "Project name",
+    "GitHub Repository": "GitHub repository",
+    "Local Repository": "Local repository",
+    "Wrapped Key Targets": "Wrapped key targets",
+    "Updated Count": "Updated count"
   },
   "step": {
     "prepare": {
@@ -66,6 +100,18 @@
     },
     "render": {
       "label": "Render result"
+    },
+    "check-repository": {
+      "label": "Check repository"
+    },
+    "create-project": {
+      "label": "Create project"
+    },
+    "wrap-project-key": {
+      "label": "Wrap project key"
+    },
+    "save-wrapped-keys": {
+      "label": "Save wrapped keys"
     },
     "detail": {
       "DETAIL_PREPARING": "Checking command execution context",
