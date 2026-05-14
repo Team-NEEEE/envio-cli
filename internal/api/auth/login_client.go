@@ -90,6 +90,7 @@ func (c *Client) RegisterKey(ctx context.Context, request RegisterKeyRequest) (*
 
 	// 응답에서 data 필드만 추출해서 RegisterKeyResponse 타입으로 디코딩한다.
 	data, err := api.DecodeData[RegisterKeyResponse](response)
+
 	if err != nil {
 		return nil, err
 	}

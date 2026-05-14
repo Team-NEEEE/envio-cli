@@ -1,5 +1,7 @@
 package authapi
 
+import "encoding/json"
+
 type LoginStartResponse struct {
 	Message        string `json:"message"`
 	LoginSessionID string `json:"loginSessionId"`
@@ -31,4 +33,42 @@ type RegisterKeyResponse struct {
 	Email    string `json:"email"`
 	UserID   int64  `json:"userId"`
 	DeviceID int64  `json:"deviceId"`
+}
+
+func (r *RegisterKeyResponse) UnmarshalJSON(data []byte) error {
+	type registerKeyResponse RegisterKeyResponse
+	var response registerKeyResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return err
+	}
+
+	var aliases struct {
+		UserIDSnake   int64 `json:"user_id"`
+		UserIDUpper   int64 `json:"userID"`
+		DeviceIDSnake int64 `json:"device_id"`
+		DeviceIDUpper int64 `json:"deviceID"`
+	}
+	if err := json.Unmarshal(data, &aliases); err != nil {
+		return err
+	}
+
+	*r = RegisterKeyResponse(response)
+	if r.UserID == 0 {
+		switch {
+		case aliases.UserIDSnake != 0:
+			r.UserID = aliases.UserIDSnake
+		case aliases.UserIDUpper != 0:
+			r.UserID = aliases.UserIDUpper
+		}
+	}
+	if r.DeviceID == 0 {
+		switch {
+		case aliases.DeviceIDSnake != 0:
+			r.DeviceID = aliases.DeviceIDSnake
+		case aliases.DeviceIDUpper != 0:
+			r.DeviceID = aliases.DeviceIDUpper
+		}
+	}
+
+	return nil
 }
