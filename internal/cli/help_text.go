@@ -46,6 +46,13 @@ func loginShort(lang i18n.Language) string {
 	return "Log in to Envio with GitHub OAuth."
 }
 
+func createShort(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "현재 Git 저장소를 Envio 프로젝트로 등록합니다."
+	}
+	return "Register the current Git repository as an Envio project."
+}
+
 func koreanFlagText(name string) string {
 	switch name {
 	case "plain":
@@ -60,6 +67,8 @@ func koreanFlagText(name string) string {
 		return "도움말을 표시합니다"
 	case "version":
 		return "버전을 표시합니다"
+	case "repo":
+		return "등록할 GitHub 저장소 URL"
 	default:
 		return ""
 	}
@@ -83,6 +92,8 @@ func englishFlagText(name string) string {
 		return "Show help for command"
 	case "version":
 		return "Show envio version"
+	case "repo":
+		return "GitHub repository URL to register"
 	default:
 		return ""
 	}
