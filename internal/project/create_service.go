@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 
 	projectapi "github.com/Team-NEEEE/envio-cli/internal/api/project"
@@ -34,6 +35,7 @@ const (
 	ErrorSaveWrappedKeysFailed     = "SAVE_WRAPPED_KEYS_FAILED"
 	ErrorSaveProjectSessionFailed  = "SAVE_PROJECT_SESSION_FAILED"
 	ErrorCreateResponseInvalid     = "CREATE_RESPONSE_INVALID"
+	ErrorLoginRequired             = "LOGIN_REQUIRED"
 )
 
 const (
@@ -62,6 +64,7 @@ type CreateService struct {
 	generateProjectMasterKey func() ([]byte, error)
 	wrapProjectMasterKey     func(string, []byte) (string, error)
 	saveProjectSession       func(string, Session) error
+	loadGlobalSession        func() (config.GlobalSession, error)
 }
 
 // createAPI create 흐름에서 필요한 백엔드 호출만 담은 좁은 인터페이스다.
@@ -81,6 +84,7 @@ func NewCreateService(apiURL string) *CreateService {
 		generateProjectMasterKey: envcrypto.GenerateProjectMasterKey,
 		wrapProjectMasterKey:     envcrypto.WrapProjectMasterKey,
 		saveProjectSession:       saveProjectSession,
+		loadGlobalSession:        config.LoadGlobalSession,
 	}
 }
 
@@ -112,6 +116,11 @@ func (s *CreateService) Create(
 	reporter.UpdateStep(command.StepUpdate{ID: StepCheckRepository, Status: command.StatusSuccess})
 
 	reporter.UpdateStep(command.StepUpdate{ID: StepCreateProject, Status: command.StatusRunning})
+	globalSession, appErr := s.requireGlobalSession()
+	if appErr != nil {
+		reporter.UpdateStep(command.StepUpdate{ID: StepCreateProject, Status: command.StatusError})
+		return nil, appErr
+	}
 	// 클라이언트 생성 오류를 여기서 보고하면 사용자는 어느 단계에서 실패했는지 같은 UI 흐름으로 볼 수 있다.
 	if s.clientErr != nil {
 		reporter.UpdateStep(command.StepUpdate{ID: StepCreateProject, Status: command.StatusError})
@@ -133,10 +142,10 @@ func (s *CreateService) Create(
 		)
 	}
 
-	// create API 명세에 맞춰 repositoryUrl만 전송한다.
-	// owner/repo는 서버가 URL에서 판단하고, CLI는 로컬 origin과 입력 URL 일치 여부만 보장한다.
 	createResponse, err := s.client.CreateProject(ctx, projectapi.CreateProjectRequest{
 		RepositoryURL: repositoryURL,
+		DeviceID:      globalSession.DeviceID,
+		PublicKey:     globalSession.PublicKey,
 	})
 	if err != nil {
 		reporter.UpdateStep(command.StepUpdate{ID: StepCreateProject, Status: command.StatusError})
@@ -164,10 +173,10 @@ func (s *CreateService) Create(
 	reporter.UpdateStep(command.StepUpdate{ID: StepWrapProjectKey, Status: command.StatusSuccess})
 
 	reporter.UpdateStep(command.StepUpdate{ID: StepSaveWrappedKeys, Status: command.StatusRunning})
-	// create 흐름은 globalSession을 사용하지 않으므로 Authorization 값은 비워 둔다.
-	// 인증이 필요한 다른 세션 방식이 정해지면 이 경계에서 주입하면 된다.
 	saveResponse, err := s.client.SaveWrappedKeys(ctx, createResponse.ProjectID, projectapi.SaveWrappedKeysRequest{
 		WrappedKeys: wrappedKeys,
+		DeviceID:    globalSession.DeviceID,
+		PublicKey:   globalSession.PublicKey,
 	}, "")
 	if err != nil {
 		reporter.UpdateStep(command.StepUpdate{ID: StepSaveWrappedKeys, Status: command.StatusError})
@@ -239,6 +248,9 @@ func (s *CreateService) ensureDefaults() {
 	if s.saveProjectSession == nil {
 		s.saveProjectSession = saveProjectSession
 	}
+	if s.loadGlobalSession == nil {
+		s.loadGlobalSession = config.LoadGlobalSession
+	}
 }
 
 // validateRepository는 현재 작업 디렉터리가 속한 Git 저장소와 입력 repositoryURL이 같은 GitHub 저장소인지 확인한다.
@@ -286,6 +298,35 @@ func (s *CreateService) validateRepository(
 	}
 
 	return repository, inputRef, nil
+}
+
+func (s *CreateService) requireGlobalSession() (config.GlobalSession, *command.AppError) {
+	session, err := s.loadGlobalSession()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return config.GlobalSession{}, newCreateAppError(
+				ErrorLoginRequired,
+				"login is required",
+				"Run `envio login` before creating a project.",
+				1,
+			)
+		}
+		return config.GlobalSession{}, newCreateAppError(
+			ErrorLoginRequired,
+			"login session could not be loaded",
+			err.Error(),
+			1,
+		)
+	}
+	if !session.Valid() {
+		return config.GlobalSession{}, newCreateAppError(
+			ErrorLoginRequired,
+			"login session is invalid",
+			"Run `envio login` before creating a project.",
+			1,
+		)
+	}
+	return session, nil
 }
 
 // validateCreateResponse는 백엔드 create 응답이 이후 암호화 작업에 필요한 최소 계약을 만족하는지 확인한다.

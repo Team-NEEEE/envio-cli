@@ -33,6 +33,9 @@ func TestClientCreateProjectSendsRequestAndDecodesResponse(t *testing.T) {
 		if body.RepositoryURL != "https://github.com/Team-NEEEE/envio-cli.git" {
 			t.Fatalf("body = %#v", body)
 		}
+		if body.DeviceID != 20 || body.PublicKey != "ssh-rsa AAAA" {
+			t.Fatalf("body session fields = %#v", body)
+		}
 
 		writer.Header().Set("Content-Type", "application/json")
 		writer.WriteHeader(http.StatusOK)
@@ -64,6 +67,8 @@ func TestClientCreateProjectSendsRequestAndDecodesResponse(t *testing.T) {
 
 	got, err := client.CreateProject(context.Background(), CreateProjectRequest{
 		RepositoryURL: "https://github.com/Team-NEEEE/envio-cli.git",
+		DeviceID:      20,
+		PublicKey:     "ssh-rsa AAAA",
 	})
 	if err != nil {
 		t.Fatalf("CreateProject() error = %v", err)
@@ -95,6 +100,8 @@ func TestClientSaveWrappedKeysSendsRequestAndDecodesResponse(t *testing.T) {
 			t.Fatalf("decode request body: %v", err)
 		}
 		if len(body.WrappedKeys) != 1 ||
+			body.DeviceID != 20 ||
+			body.PublicKey != "ssh-rsa AAAA" ||
 			body.WrappedKeys[0].UserID != 10 ||
 			body.WrappedKeys[0].UserDeviceID != 20 ||
 			body.WrappedKeys[0].EncryptedKey != "base64-wrapped-key" {
@@ -118,6 +125,8 @@ func TestClientSaveWrappedKeysSendsRequestAndDecodesResponse(t *testing.T) {
 	}
 
 	got, err := client.SaveWrappedKeys(context.Background(), 1, SaveWrappedKeysRequest{
+		DeviceID:  20,
+		PublicKey: "ssh-rsa AAAA",
 		WrappedKeys: []WrappedKey{
 			{UserID: 10, UserDeviceID: 20, EncryptedKey: "base64-wrapped-key"},
 		},

@@ -2,6 +2,8 @@ package projectapi
 
 type CreateProjectRequest struct {
 	RepositoryURL string `json:"repositoryUrl"`
+	PublicKey     string `json:"publicKey"`
+	DeviceID      int64  `json:"deviceId"`
 }
 
 type CreateProjectResponse struct {
@@ -22,7 +24,9 @@ type ProjectMember struct {
 }
 
 type SaveWrappedKeysRequest struct {
+	PublicKey   string       `json:"publicKey"`
 	WrappedKeys []WrappedKey `json:"wrappedKeys"`
+	DeviceID    int64        `json:"deviceId"`
 }
 
 type WrappedKey struct {

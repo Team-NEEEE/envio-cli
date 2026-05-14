@@ -9,6 +9,7 @@ import (
 
 	projectapi "github.com/Team-NEEEE/envio-cli/internal/api/project"
 	"github.com/Team-NEEEE/envio-cli/internal/command"
+	"github.com/Team-NEEEE/envio-cli/internal/config"
 	"github.com/Team-NEEEE/envio-cli/internal/workspace"
 )
 
@@ -58,7 +59,7 @@ func (f *fakeProjectGit) Inspect(context.Context, string) (workspace.GitReposito
 	return f.repository, f.err
 }
 
-func TestCreateDoesNotRequireGlobalSessionBeforeGitOrAPI(t *testing.T) {
+func TestCreateSendsGlobalSessionDeviceAndPublicKey(t *testing.T) {
 	t.Parallel()
 
 	client := &fakeCreateAPI{createResp: validCreateResponse(), saveResp: validSaveResponse()}
@@ -70,6 +71,12 @@ func TestCreateDoesNotRequireGlobalSessionBeforeGitOrAPI(t *testing.T) {
 	}
 	if client.createCalls != 1 || client.saveCalls != 1 {
 		t.Fatalf("api calls = create %d save %d, want both called", client.createCalls, client.saveCalls)
+	}
+	if client.createReq.DeviceID != 20 || client.createReq.PublicKey != "public-key" {
+		t.Fatalf("create request session fields = %#v", client.createReq)
+	}
+	if client.saveReq.DeviceID != 20 || client.saveReq.PublicKey != "public-key" {
+		t.Fatalf("save request session fields = %#v", client.saveReq)
 	}
 	if saved.session.MasterKey.Value == "" {
 		t.Fatalf("saved session should include masterKey: %#v", saved.session)
@@ -100,6 +107,32 @@ func TestCreateStopsBeforeAPIWhenRepositoryContextMismatches(t *testing.T) {
 	}
 }
 
+func TestCreateRequiresGlobalSessionBeforeAPI(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{createResp: validCreateResponse(), saveResp: validSaveResponse()}
+	service, saved := newTestCreateService(client)
+	service.loadGlobalSession = func() (config.GlobalSession, error) {
+		return config.GlobalSession{}, nil
+	}
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorLoginRequired {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorLoginRequired)
+	}
+	if client.createCalls != 0 || client.saveCalls != 0 {
+		t.Fatalf("api calls = create %d save %d, want none", client.createCalls, client.saveCalls)
+	}
+	if saved.called {
+		t.Fatal("project session should not be saved without global session")
+	}
+}
+
 func TestCreateCreatesProjectWrapsMembersSavesWrappedKeysAndLocalSession(t *testing.T) {
 	t.Parallel()
 
@@ -127,11 +160,17 @@ func TestCreateCreatesProjectWrapsMembersSavesWrappedKeysAndLocalSession(t *test
 	if client.createReq.RepositoryURL != "https://github.com/Team-NEEEE/envio-cli.git" {
 		t.Fatalf("create request = %#v", client.createReq)
 	}
+	if client.createReq.DeviceID != 20 || client.createReq.PublicKey != "public-key" {
+		t.Fatalf("create request session fields = %#v", client.createReq)
+	}
 	if client.saveProject != 1 || len(client.saveReq.WrappedKeys) != 2 {
 		t.Fatalf("save request project=%d body=%#v", client.saveProject, client.saveReq)
 	}
 	if client.saveAuth != "" {
-		t.Fatalf("save authorization = %q, want empty because create does not use global session", client.saveAuth)
+		t.Fatalf("save authorization = %q, want empty", client.saveAuth)
+	}
+	if client.saveReq.DeviceID != 20 || client.saveReq.PublicKey != "public-key" {
+		t.Fatalf("save request session fields = %#v", client.saveReq)
 	}
 	if client.saveReq.WrappedKeys[0].EncryptedKey != "wrapped-public-key-1" ||
 		client.saveReq.WrappedKeys[1].EncryptedKey != "wrapped-public-key-2" {
@@ -276,6 +315,15 @@ func newTestCreateService(client *fakeCreateAPI) (*CreateService, *savedProjectS
 		},
 		wrapProjectMasterKey: func(publicKey string, _ []byte) (string, error) {
 			return "wrapped-" + publicKey, nil
+		},
+		loadGlobalSession: func() (config.GlobalSession, error) {
+			return config.GlobalSession{
+				UserID:     10,
+				GithubID:   "octocat",
+				DeviceID:   20,
+				DeviceName: "desktop",
+				PublicKey:  "public-key",
+			}, nil
 		},
 		saveProjectSession: func(root string, session Session) error {
 			saved.called = true

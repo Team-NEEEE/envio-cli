@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
@@ -249,8 +248,18 @@ func TestRunCreatePlainSuccessDoesNotExposeKeys(t *testing.T) {
 			if request.Method != http.MethodPost {
 				t.Fatalf("create method = %s", request.Method)
 			}
-			if _, err := io.Copy(io.Discard, request.Body); err != nil {
-				t.Fatalf("read create body: %v", err)
+			var body struct {
+				RepositoryURL string `json:"repositoryUrl"`
+				PublicKey     string `json:"publicKey"`
+				DeviceID      int64  `json:"deviceId"`
+			}
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+				t.Fatalf("decode create body: %v", err)
+			}
+			if body.RepositoryURL != "https://github.com/Team-NEEEE/envio-cli.git" ||
+				body.DeviceID != 20 ||
+				body.PublicKey != "public-key" {
+				t.Fatalf("create body = %#v", body)
 			}
 			if err := json.NewEncoder(writer).Encode(map[string]any{
 				"success": true,
@@ -281,16 +290,21 @@ func TestRunCreatePlainSuccessDoesNotExposeKeys(t *testing.T) {
 				t.Fatalf("save method = %s", request.Method)
 			}
 			var body struct {
+				PublicKey   string `json:"publicKey"`
 				WrappedKeys []struct {
 					EncryptedKey string `json:"encryptedKey"`
 					UserID       int64  `json:"userId"`
 					UserDeviceID int64  `json:"userDeviceId"`
 				} `json:"wrappedKeys"`
+				DeviceID int64 `json:"deviceId"`
 			}
 			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 				t.Fatalf("decode save body: %v", err)
 			}
-			if len(body.WrappedKeys) != 1 || body.WrappedKeys[0].EncryptedKey == "" {
+			if len(body.WrappedKeys) != 1 ||
+				body.WrappedKeys[0].EncryptedKey == "" ||
+				body.DeviceID != 20 ||
+				body.PublicKey != "public-key" {
 				t.Fatalf("save body = %#v", body)
 			}
 			if err := json.NewEncoder(writer).Encode(map[string]any{
