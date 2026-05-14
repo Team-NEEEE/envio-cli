@@ -180,3 +180,49 @@ func TestClientRegisterKey(t *testing.T) {
 		t.Fatalf("response = %#v", response)
 	}
 }
+
+func TestRegisterKeyResponseAcceptsIDAliases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "snake case ids",
+			body: `{
+				"user_id": 10,
+				"device_id": 20,
+				"githubId": "octocat",
+				"email": "mona@example.com"
+			}`,
+		},
+		{
+			name: "upper id suffix",
+			body: `{
+				"userID": 10,
+				"deviceID": 20,
+				"githubId": "octocat",
+				"email": "mona@example.com"
+			}`,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var response RegisterKeyResponse
+			if err := json.Unmarshal([]byte(tt.body), &response); err != nil {
+				t.Fatalf("Unmarshal() error = %v", err)
+			}
+			if response.UserID != 10 || response.DeviceID != 20 {
+				t.Fatalf("response = %#v", response)
+			}
+			if response.GithubID != "octocat" || response.Email != "mona@example.com" {
+				t.Fatalf("response = %#v", response)
+			}
+		})
+	}
+}

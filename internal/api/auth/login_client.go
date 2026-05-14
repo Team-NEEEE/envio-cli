@@ -2,6 +2,7 @@ package authapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/Team-NEEEE/envio-cli/internal/api"
@@ -90,6 +91,10 @@ func (c *Client) RegisterKey(ctx context.Context, request RegisterKeyRequest) (*
 
 	// 응답에서 data 필드만 추출해서 RegisterKeyResponse 타입으로 디코딩한다.
 	data, err := api.DecodeData[RegisterKeyResponse](response)
+
+	// ✨ 데이터 필드명과 값을 함께 출력 (디버깅용)
+	fmt.Printf("🎯 RegisterKey 응답 데이터: %+v\n", data)
+
 	if err != nil {
 		return nil, err
 	}
