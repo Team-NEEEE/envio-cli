@@ -197,8 +197,7 @@ func appErrorFromCobra(err error) *command.AppError {
 	if err == nil {
 		return nil
 	}
-	var appErr *command.AppError
-	if errors.As(err, &appErr) {
+	if appErr, ok := errors.AsType[*command.AppError](err); ok {
 		return appErr
 	}
 

@@ -15,15 +15,15 @@ import (
 )
 
 const (
-	// StepCheckRepository는 입력된 저장소 URL과 현재 로컬 Git origin이 같은 저장소인지 확인하는 단계다.
+	// StepCheckRepository StepCheckRepository는 입력된 저장소 URL과 현재 로컬 Git origin이 같은 저장소인지 확인하는 단계다.
 	StepCheckRepository = "check-repository"
-	// StepCreateProject는 백엔드에 프로젝트를 생성하고 멤버 공개키 목록을 받는 단계다.
+	// StepCreateProject StepCreateProject는 백엔드에 프로젝트를 생성하고 멤버 공개키 목록을 받는 단계다.
 	StepCreateProject = "create-project"
-	// StepWrapProjectKey는 새 프로젝트 마스터 키를 멤버 디바이스 공개키별로 암호화하는 단계다.
+	// StepWrapProjectKey StepWrapProjectKey는 새 프로젝트 마스터 키를 멤버 디바이스 공개키별로 암호화하는 단계다.
 	StepWrapProjectKey = "wrap-project-key"
-	// StepSaveWrappedKeys는 암호화된 프로젝트 마스터 키 목록을 백엔드에 등록하는 단계다.
+	// StepSaveWrappedKeys StepSaveWrappedKeys는 암호화된 프로젝트 마스터 키 목록을 백엔드에 등록하는 단계다.
 	StepSaveWrappedKeys = "save-wrapped-keys"
-	// StepSaveProjectSession은 저장소 루트의 .envio 파일에 프로젝트 세션을 저장하는 단계다.
+	// StepSaveProjectSession StepSaveProjectSession은 저장소 루트의 .envio 파일에 프로젝트 세션을 저장하는 단계다.
 	StepSaveProjectSession = "save-project-session"
 
 	ErrorGitRepositoryRequired     = "GIT_REPOSITORY_REQUIRED"
@@ -41,7 +41,7 @@ const (
 	projectMasterKeyEncoding  = "base64"
 )
 
-// CreateResult는 프로젝트 생성 성공 후 렌더러로 넘기는 요약 정보다.
+// CreateResult CreateResult는 프로젝트 생성 성공 후 렌더러로 넘기는 요약 정보다.
 // 민감한 masterKey 값은 결과에 넣지 않고 저장소 로컬 .envio 파일에만 저장한다.
 type CreateResult struct {
 	ProjectName           string
@@ -53,7 +53,7 @@ type CreateResult struct {
 	UpdatedCount          int
 }
 
-// CreateService는 저장소 검증, 백엔드 프로젝트 생성, 키 래핑, 로컬 세션 저장을 조율한다.
+// CreateService CreateService는 저장소 검증, 백엔드 프로젝트 생성, 키 래핑, 로컬 세션 저장을 조율한다.
 // 테스트에서는 각 의존성을 바꿔 끼워 네트워크, Git, 파일 시스템을 직접 건드리지 않고 흐름을 검증한다.
 type CreateService struct {
 	client                   createAPI
@@ -64,13 +64,13 @@ type CreateService struct {
 	saveProjectSession       func(string, Session) error
 }
 
-// createAPI는 create 흐름에서 필요한 백엔드 호출만 담은 좁은 인터페이스다.
+// createAPI create 흐름에서 필요한 백엔드 호출만 담은 좁은 인터페이스다.
 type createAPI interface {
 	CreateProject(context.Context, projectapi.CreateProjectRequest) (*projectapi.CreateProjectResponse, error)
 	SaveWrappedKeys(context.Context, int64, projectapi.SaveWrappedKeysRequest, string) (*projectapi.SaveWrappedKeysResponse, error)
 }
 
-// NewCreateService는 운영 환경에서 사용할 프로젝트 생성 서비스를 만든다.
+// NewCreateService 운영 환경에서 사용할 프로젝트 생성 서비스를 만든다.
 // HTTP 클라이언트 생성 실패는 보관해 두었다가 실제 create 단계에서 command.AppError로 변환한다.
 func NewCreateService(apiURL string) *CreateService {
 	client, err := projectapi.NewHTTPClient(config.APIURLOrDefault(apiURL), nil)
@@ -84,7 +84,7 @@ func NewCreateService(apiURL string) *CreateService {
 	}
 }
 
-// Create는 현재 작업 디렉터리가 속한 Git 저장소를 기준으로 프로젝트를 생성한다.
+// Create Create는 현재 작업 디렉터리가 속한 Git 저장소를 기준으로 프로젝트를 생성한다.
 // 저장소 검증, 서버 프로젝트 생성, 멤버별 키 래핑, 서버 저장, 로컬 .envio 저장 순서로 진행한다.
 func (s *CreateService) Create(
 	ctx context.Context,
