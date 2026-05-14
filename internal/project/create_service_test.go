@@ -13,13 +13,13 @@ import (
 )
 
 type fakeCreateAPI struct {
-	createReq   projectapi.CreateProjectRequest
-	saveReq     projectapi.SaveWrappedKeysRequest
-	createResp  *projectapi.CreateProjectResponse
-	saveResp    *projectapi.SaveWrappedKeysResponse
 	createErr   error
 	saveErr     error
+	createResp  *projectapi.CreateProjectResponse
+	saveResp    *projectapi.SaveWrappedKeysResponse
+	createReq   projectapi.CreateProjectRequest
 	saveAuth    string
+	saveReq     projectapi.SaveWrappedKeysRequest
 	saveProject int64
 	createCalls int
 	saveCalls   int
@@ -48,8 +48,8 @@ func (f *fakeCreateAPI) SaveWrappedKeys(
 }
 
 type fakeProjectGit struct {
-	repository workspace.GitRepository
 	err        error
+	repository workspace.GitRepository
 	calls      int
 }
 

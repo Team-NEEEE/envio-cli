@@ -153,8 +153,8 @@ func TestRunCreateInputErrorsShowUsage(t *testing.T) {
 
 	tests := []struct {
 		name string
-		args []string
 		want string
+		args []string
 	}{
 		{
 			name: "missing repository URL",
@@ -252,7 +252,7 @@ func TestRunCreatePlainSuccessDoesNotExposeKeys(t *testing.T) {
 			if _, err := io.Copy(io.Discard, request.Body); err != nil {
 				t.Fatalf("read create body: %v", err)
 			}
-			_ = json.NewEncoder(writer).Encode(map[string]any{
+			if err := json.NewEncoder(writer).Encode(map[string]any{
 				"success": true,
 				"data": map[string]any{
 					"message":        "created",
@@ -272,7 +272,9 @@ func TestRunCreatePlainSuccessDoesNotExposeKeys(t *testing.T) {
 				},
 				"error":     nil,
 				"timestamp": "2026-05-06T00:04:31.127Z",
-			})
+			}); err != nil {
+				t.Fatalf("encode create response: %v", err)
+			}
 		case "/api/projects/1/wrapped-keys":
 			saveCalled = true
 			if request.Method != http.MethodPut {
@@ -291,7 +293,7 @@ func TestRunCreatePlainSuccessDoesNotExposeKeys(t *testing.T) {
 			if len(body.WrappedKeys) != 1 || body.WrappedKeys[0].EncryptedKey == "" {
 				t.Fatalf("save body = %#v", body)
 			}
-			_ = json.NewEncoder(writer).Encode(map[string]any{
+			if err := json.NewEncoder(writer).Encode(map[string]any{
 				"success": true,
 				"data": map[string]any{
 					"message":      "saved",
@@ -300,7 +302,9 @@ func TestRunCreatePlainSuccessDoesNotExposeKeys(t *testing.T) {
 				},
 				"error":     nil,
 				"timestamp": "2026-05-06T00:04:31.127Z",
-			})
+			}); err != nil {
+				t.Fatalf("encode save response: %v", err)
+			}
 		default:
 			t.Fatalf("unexpected path = %s", request.URL.Path)
 		}

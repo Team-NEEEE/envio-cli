@@ -44,7 +44,7 @@ func (i *Inspector) Inspect(ctx context.Context, cwd string) (GitRepository, err
 
 	root, err := i.runner.Run(ctx, cwd, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return GitRepository{}, fmt.Errorf("%w: %v", ErrGitRepositoryRequired, err)
+		return GitRepository{}, fmt.Errorf("%w: %w", ErrGitRepositoryRequired, err)
 	}
 	root = strings.TrimSpace(root)
 	if root == "" {
@@ -53,7 +53,7 @@ func (i *Inspector) Inspect(ctx context.Context, cwd string) (GitRepository, err
 
 	originURL, err := i.runner.Run(ctx, root, "remote", "get-url", "origin")
 	if err != nil {
-		return GitRepository{}, fmt.Errorf("%w: %v", ErrGitRepositoryRequired, err)
+		return GitRepository{}, fmt.Errorf("%w: %w", ErrGitRepositoryRequired, err)
 	}
 	originURL = strings.TrimSpace(originURL)
 	if originURL == "" {
