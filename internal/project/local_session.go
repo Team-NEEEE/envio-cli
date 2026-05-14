@@ -10,6 +10,13 @@ import (
 )
 
 const localSessionFile = ".envio"
+const gitignoreFile = ".gitignore"
+
+var localSessionIgnorePatterns = []string{
+	".envio",
+	".envio.tmp",
+	".envio/",
+}
 
 type SessionFile struct {
 	Session Session `json:"session"`
@@ -36,6 +43,9 @@ func saveProjectSession(repositoryRoot string, session Session) error {
 	if err := validateProjectSession(session); err != nil {
 		return err
 	}
+	if err := ensureProjectSessionIgnored(repositoryRoot); err != nil {
+		return err
+	}
 
 	path := localSessionPath(repositoryRoot)
 	raw, err := json.MarshalIndent(SessionFile{Session: session}, "", "  ")
@@ -56,6 +66,46 @@ func saveProjectSession(repositoryRoot string, session Session) error {
 
 func localSessionPath(repositoryRoot string) string {
 	return filepath.Join(repositoryRoot, localSessionFile)
+}
+
+func ensureProjectSessionIgnored(repositoryRoot string) error {
+	path := filepath.Join(repositoryRoot, gitignoreFile)
+	raw, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("read .gitignore: %w", err)
+	}
+
+	existing := map[string]bool{}
+	if err == nil {
+		for _, line := range strings.Split(string(raw), "\n") {
+			existing[strings.TrimSpace(strings.TrimSuffix(line, "\r"))] = true
+		}
+	}
+
+	missing := make([]string, 0, len(localSessionIgnorePatterns))
+	for _, pattern := range localSessionIgnorePatterns {
+		if !existing[pattern] {
+			missing = append(missing, pattern)
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+
+	var builder strings.Builder
+	builder.Write(raw)
+	if len(raw) > 0 && !strings.HasSuffix(string(raw), "\n") {
+		builder.WriteString("\n")
+	}
+	for _, pattern := range missing {
+		builder.WriteString(pattern)
+		builder.WriteString("\n")
+	}
+
+	if err := os.WriteFile(path, []byte(builder.String()), 0600); err != nil {
+		return fmt.Errorf("write .gitignore: %w", err)
+	}
+	return nil
 }
 
 func validateProjectSession(session Session) error {

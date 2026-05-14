@@ -215,6 +215,34 @@ func TestCreateRejectsInvalidCreateResponseBeforeWrapping(t *testing.T) {
 	}
 }
 
+func TestCreateAllowsMissingMemberUserID(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createResp: &projectapi.CreateProjectResponse{
+			ProjectID: 1,
+			Members: []projectapi.ProjectMember{
+				{UserDeviceID: 20, GithubID: "octocat", PublicKey: "public-key-1"},
+			},
+		},
+		saveResp: validSaveResponse(),
+	}
+	service, _ := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr != nil {
+		t.Fatalf("Create() appErr = %v", appErr)
+	}
+	if len(client.saveReq.WrappedKeys) != 1 || client.saveReq.WrappedKeys[0].UserID != 0 {
+		t.Fatalf("save request = %#v", client.saveReq)
+	}
+}
+
 func TestCreateStopsBeforeSaveWhenWrappingFails(t *testing.T) {
 	t.Parallel()
 

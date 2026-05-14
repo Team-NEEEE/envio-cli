@@ -205,6 +205,7 @@ func (s *CreateService) Create(
 		result.GithubRepoName = inputRef.Repo
 	}
 	if saveResponse != nil {
+		// TODO: Validate projectId and updatedCount after the backend defines partial-update semantics.
 		result.UpdatedCount = saveResponse.UpdatedCount
 	}
 
@@ -356,11 +357,12 @@ func validateCreateResponse(response *projectapi.CreateProjectResponse) *command
 		)
 	}
 	for _, member := range response.Members {
-		if member.UserID <= 0 || member.UserDeviceID <= 0 || strings.TrimSpace(member.PublicKey) == "" {
+		// TODO: Re-enable userId validation if the create response contract makes it mandatory.
+		if member.UserDeviceID <= 0 || strings.TrimSpace(member.PublicKey) == "" {
 			return newCreateAppError(
 				ErrorCreateResponseInvalid,
 				"create project response contains invalid member data",
-				"Server response did not include valid userId, userDeviceId, and publicKey values.",
+				"Server response did not include valid userDeviceId and publicKey values.",
 				1,
 			)
 		}
