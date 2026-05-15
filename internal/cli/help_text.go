@@ -53,6 +53,13 @@ func createShort(lang i18n.Language) string {
 	return "Register the current Git repository as an Envio project."
 }
 
+func linkShort(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "현재 Git 저장소를 기존 Envio 프로젝트와 연결합니다."
+	}
+	return "Link the current Git repository to an existing Envio project."
+}
+
 func koreanFlagText(name string) string {
 	switch name {
 	case "plain":

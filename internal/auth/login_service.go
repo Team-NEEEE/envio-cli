@@ -127,6 +127,10 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		return nil, err
 	}
 
+	if err := envcrypto.SaveDevicePrivateKey(resp.DeviceID, privatePEM); err != nil {
+		return nil, fmt.Errorf("device private key 저장 실패: %w", err)
+	}
+
 	if err := config.SaveGlobalSession(config.GlobalSession{
 		UserID:     resp.UserID,
 		GithubID:   resp.GithubID,

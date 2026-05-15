@@ -1,12 +1,27 @@
 package crypto
 
-import "github.com/zalando/go-keyring"
+import (
+	"encoding/base64"
+	"fmt"
 
-const serviceName = "envio-cli"
+	"github.com/zalando/go-keyring"
+)
+
+const (
+	serviceName       = "envio"
+	legacyServiceName = "envio-cli"
+)
 
 // SavePrivateKey 개인키 저장
 func SavePrivateKey(privateKeyPEM string) error {
 	return keyring.Set(serviceName, "device-private-key", privateKeyPEM)
+}
+
+func SaveDevicePrivateKey(deviceID int64, privateKeyPEM string) error {
+	if deviceID <= 0 {
+		return fmt.Errorf("deviceId must be positive")
+	}
+	return keyring.Set(serviceName, devicePrivateKeyAccount(deviceID), privateKeyPEM)
 }
 
 // SavePublicKey 공개키 저장
@@ -17,4 +32,63 @@ func SavePublicKey(publicKeyPEM string) error {
 // LoadPrivateKey 개인키 로드
 func LoadPrivateKey() (string, error) {
 	return keyring.Get(serviceName, "device-private-key")
+}
+
+func LoadDevicePrivateKey(deviceID int64) (string, error) {
+	if deviceID <= 0 {
+		return "", fmt.Errorf("deviceId must be positive")
+	}
+	privateKeyPEM, err := keyring.Get(serviceName, devicePrivateKeyAccount(deviceID))
+	if err == nil {
+		return privateKeyPEM, nil
+	}
+	if legacyPrivateKeyPEM, legacyErr := LoadPrivateKey(); legacyErr == nil {
+		return legacyPrivateKeyPEM, nil
+	}
+	if legacyPrivateKeyPEM, legacyErr := keyring.Get(legacyServiceName, "device-private-key"); legacyErr == nil {
+		return legacyPrivateKeyPEM, nil
+	}
+	return "", err
+}
+
+func SaveProjectMasterKey(projectID int64, deviceID int64, projectMasterKey []byte) error {
+	if projectID <= 0 {
+		return fmt.Errorf("projectId must be positive")
+	}
+	if deviceID <= 0 {
+		return fmt.Errorf("deviceId must be positive")
+	}
+	if len(projectMasterKey) != projectMasterKeySize {
+		return fmt.Errorf("project master key must be %d bytes", projectMasterKeySize)
+	}
+	return keyring.Set(serviceName, projectMasterKeyAccount(projectID, deviceID), base64.StdEncoding.EncodeToString(projectMasterKey))
+}
+
+func LoadProjectMasterKey(projectID int64, deviceID int64) ([]byte, error) {
+	if projectID <= 0 {
+		return nil, fmt.Errorf("projectId must be positive")
+	}
+	if deviceID <= 0 {
+		return nil, fmt.Errorf("deviceId must be positive")
+	}
+	encoded, err := keyring.Get(serviceName, projectMasterKeyAccount(projectID, deviceID))
+	if err != nil {
+		return nil, err
+	}
+	projectMasterKey, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("decode project master key: %w", err)
+	}
+	if len(projectMasterKey) != projectMasterKeySize {
+		return nil, fmt.Errorf("project master key must be %d bytes", projectMasterKeySize)
+	}
+	return projectMasterKey, nil
+}
+
+func devicePrivateKeyAccount(deviceID int64) string {
+	return fmt.Sprintf("private-key:%d", deviceID)
+}
+
+func projectMasterKeyAccount(projectID int64, deviceID int64) string {
+	return fmt.Sprintf("project-master-key:%d:%d", projectID, deviceID)
 }

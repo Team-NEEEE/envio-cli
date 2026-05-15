@@ -118,6 +118,7 @@ func newRootCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitC
 
 	root.AddCommand(newLoginCommand(rt, lang, global, exitCode))
 	root.AddCommand(newCreateCommand(rt, lang, global, exitCode))
+	root.AddCommand(newLinkCommand(rt, lang, global, exitCode))
 	root.AddCommand(newCompletionCommand(lang, root))
 	return root
 }
