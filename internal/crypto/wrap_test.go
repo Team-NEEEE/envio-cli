@@ -79,6 +79,28 @@ func TestWrapProjectMasterKeyWithSSHPublicKey(t *testing.T) {
 	}
 }
 
+func TestUnwrapProjectMasterKey(t *testing.T) {
+	t.Parallel()
+
+	privatePEM, publicKey, err := GenerateRSAKeyPairForLogin()
+	if err != nil {
+		t.Fatalf("GenerateRSAKeyPairForLogin() error = %v", err)
+	}
+	projectMasterKey := []byte("12345678901234567890123456789012")
+	wrapped, err := WrapProjectMasterKey(publicKey, projectMasterKey)
+	if err != nil {
+		t.Fatalf("WrapProjectMasterKey() error = %v", err)
+	}
+
+	got, err := UnwrapProjectMasterKey(privatePEM, wrapped)
+	if err != nil {
+		t.Fatalf("UnwrapProjectMasterKey() error = %v", err)
+	}
+	if string(got) != string(projectMasterKey) {
+		t.Fatalf("UnwrapProjectMasterKey() = %q", string(got))
+	}
+}
+
 func TestWrapProjectMasterKeyRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 

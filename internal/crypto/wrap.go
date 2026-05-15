@@ -41,6 +41,53 @@ func WrapProjectMasterKey(publicKeyValue string, projectMasterKey []byte) (strin
 	return base64.StdEncoding.EncodeToString(wrapped), nil
 }
 
+func UnwrapProjectMasterKey(privateKeyPEM string, wrappedMasterKey string) ([]byte, error) {
+	privateKey, err := parseRSAPrivateKey(privateKeyPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertext, err := base64.StdEncoding.DecodeString(strings.TrimSpace(wrappedMasterKey))
+	if err != nil {
+		return nil, fmt.Errorf("decode wrapped project master key: %w", err)
+	}
+
+	projectMasterKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unwrap project master key: %w", err)
+	}
+	if len(projectMasterKey) != projectMasterKeySize {
+		return nil, fmt.Errorf("project master key must be %d bytes", projectMasterKeySize)
+	}
+	return projectMasterKey, nil
+}
+
+func parseRSAPrivateKey(raw string) (*rsa.PrivateKey, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, errors.New("private key is empty")
+	}
+
+	block, _ := pem.Decode([]byte(raw))
+	if block == nil {
+		return nil, errors.New("private key PEM block is missing")
+	}
+
+	if privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
+		return privateKey, nil
+	}
+
+	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse RSA private key: %w", err)
+	}
+	privateKey, ok := parsed.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("private key is not RSA")
+	}
+	return privateKey, nil
+}
+
 func parseRSAPublicKey(raw string) (*rsa.PublicKey, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

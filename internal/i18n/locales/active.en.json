@@ -57,6 +57,72 @@
     },
     "CREATE_RESPONSE_INVALID": {
       "message": "Project creation response is invalid."
+    },
+    "LINK_PROJECT_FAILED": {
+      "message": "Project link failed."
+    },
+    "LINK_RESPONSE_INVALID": {
+      "message": "Project link response is invalid."
+    },
+    "UNWRAP_PROJECT_KEY_FAILED": {
+      "message": "Project key unwrap failed."
+    },
+    "SAVE_PROJECT_KEY_FAILED": {
+      "message": "Project key save failed."
+    },
+    "SAVE_PROJECT_METADATA_FAILED": {
+      "message": "Project metadata save failed."
+    },
+    "SAVE_LINK_CONFIG_FAILED": {
+      "message": "Local link config save failed."
+    },
+    "LOCAL_LINK_CONFIG_CONFLICT": {
+      "message": "Local link config path conflicts with an existing file."
+    },
+    "INVALID_REPOSITORY_URL": {
+      "message": "Repository URL is invalid.",
+      "hint": "Use a valid GitHub repository URL."
+    },
+    "REPOSITORY_PARSE_FAILED": {
+      "message": "Repository URL could not be parsed.",
+      "hint": "Use a GitHub repository URL that can be parsed as owner/repo."
+    },
+    "INVALID_PUBLIC_KEY_FORMAT": {
+      "message": "Device public key format is invalid.",
+      "hint": "Run `envio login` again to register a valid device public key."
+    },
+    "INVALID_DEVICE_ID": {
+      "message": "Device ID is invalid.",
+      "hint": "Run `envio login` again to register this device."
+    },
+    "UNAUTHORIZED": {
+      "message": "Login is required.",
+      "hint": "Run `envio login` before linking a project."
+    },
+    "PROJECT_ACCESS_DENIED": {
+      "message": "Envio access to this GitHub repository is denied."
+    },
+    "PROJECT_NOT_FOUND": {
+      "message": "This project is not registered in Envio yet.",
+      "hint": "Run `envio create` before linking this repository."
+    },
+    "JOIN_STATUS_PENDING": {
+      "message": "Project join approval is not completed yet."
+    },
+    "WRAPPED_MASTER_KEY_NOT_READY": {
+      "message": "Project key is not ready yet."
+    },
+    "USER_DEVICE_KEY_NOT_REGISTERED": {
+      "message": "Current device key is not registered.",
+      "hint": "Run `envio login` again to register this device key."
+    },
+    "PUBLIC_KEY_MISMATCH": {
+      "message": "Local public key does not match the registered device key.",
+      "hint": "Run `envio login` again because the local public key does not match the registered device key."
+    },
+    "INTERNAL_SERVER_ERROR": {
+      "message": "A server error occurred.",
+      "hint": "Try again after the server recovers."
     }
   },
   "warning": {
@@ -74,7 +140,8 @@
       "Command completed": "Command completed",
       "Login completed": "Login completed",
       "Already logged in": "Already logged in",
-      "Create completed": "Create completed"
+      "Create completed": "Create completed",
+      "Link completed": "Link completed"
     }
   },
   "summary": {
@@ -86,8 +153,13 @@
     "Device ID": "Device ID",
     "Project ID": "Project ID",
     "Project Name": "Project name",
+    "Owner": "Owner",
+    "Repository": "Repository",
     "GitHub Repository": "GitHub repository",
+    "Join Status": "Join status",
     "Local Repository": "Local repository",
+    "Project Metadata": "Project metadata",
+    "Link Config": "Link config",
     "Wrapped Key Targets": "Wrapped key targets",
     "Updated Count": "Updated count"
   },
@@ -112,6 +184,21 @@
     },
     "save-wrapped-keys": {
       "label": "Save wrapped keys"
+    },
+    "link-project": {
+      "label": "Link project"
+    },
+    "unwrap-project-key": {
+      "label": "Unwrap project key"
+    },
+    "save-project-key": {
+      "label": "Save project key"
+    },
+    "save-project-metadata": {
+      "label": "Save project metadata"
+    },
+    "save-link-config": {
+      "label": "Save link config"
     },
     "detail": {
       "DETAIL_PREPARING": "Checking command execution context",

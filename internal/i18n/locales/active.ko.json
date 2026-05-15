@@ -57,6 +57,72 @@
     },
     "CREATE_RESPONSE_INVALID": {
       "message": "프로젝트 생성 응답이 올바르지 않습니다."
+    },
+    "LINK_PROJECT_FAILED": {
+      "message": "프로젝트 연동에 실패했습니다."
+    },
+    "LINK_RESPONSE_INVALID": {
+      "message": "프로젝트 연동 응답이 올바르지 않습니다."
+    },
+    "UNWRAP_PROJECT_KEY_FAILED": {
+      "message": "프로젝트 키 복호화에 실패했습니다."
+    },
+    "SAVE_PROJECT_KEY_FAILED": {
+      "message": "프로젝트 키 저장에 실패했습니다."
+    },
+    "SAVE_PROJECT_METADATA_FAILED": {
+      "message": "프로젝트 메타데이터 저장에 실패했습니다."
+    },
+    "SAVE_LINK_CONFIG_FAILED": {
+      "message": "로컬 연동 설정 저장에 실패했습니다."
+    },
+    "LOCAL_LINK_CONFIG_CONFLICT": {
+      "message": "로컬 연동 설정 경로가 기존 파일과 충돌합니다."
+    },
+    "INVALID_REPOSITORY_URL": {
+      "message": "저장소 URL 형식이 올바르지 않습니다.",
+      "hint": "올바른 GitHub 저장소 URL을 사용해 주세요."
+    },
+    "REPOSITORY_PARSE_FAILED": {
+      "message": "저장소 URL에서 owner/repoName을 추출하지 못했습니다.",
+      "hint": "owner/repo 형식으로 파싱 가능한 GitHub 저장소 URL을 사용해 주세요."
+    },
+    "INVALID_PUBLIC_KEY_FORMAT": {
+      "message": "기기 공개키 형식이 올바르지 않습니다.",
+      "hint": "올바른 기기 공개키를 등록하려면 `envio login`을 다시 실행해 주세요."
+    },
+    "INVALID_DEVICE_ID": {
+      "message": "기기 ID가 올바르지 않습니다.",
+      "hint": "현재 기기를 등록하려면 `envio login`을 다시 실행해 주세요."
+    },
+    "UNAUTHORIZED": {
+      "message": "로그인이 필요합니다.",
+      "hint": "프로젝트를 연동하기 전에 `envio login`을 실행해 주세요."
+    },
+    "PROJECT_ACCESS_DENIED": {
+      "message": "이 GitHub 저장소에 대한 Envio 접근 권한이 없습니다."
+    },
+    "PROJECT_NOT_FOUND": {
+      "message": "아직 Envio에 등록되지 않은 프로젝트입니다.",
+      "hint": "이 저장소를 연동하기 전에 `envio create`를 실행해 주세요."
+    },
+    "JOIN_STATUS_PENDING": {
+      "message": "프로젝트 가입 승인이 아직 완료되지 않았습니다."
+    },
+    "WRAPPED_MASTER_KEY_NOT_READY": {
+      "message": "프로젝트 키가 아직 준비되지 않았습니다."
+    },
+    "USER_DEVICE_KEY_NOT_REGISTERED": {
+      "message": "현재 기기의 공개키가 등록되지 않았습니다.",
+      "hint": "현재 기기 키를 등록하려면 `envio login`을 다시 실행해 주세요."
+    },
+    "PUBLIC_KEY_MISMATCH": {
+      "message": "로컬 공개키가 등록된 기기 공개키와 일치하지 않습니다.",
+      "hint": "등록된 기기 공개키와 일치하지 않으므로 `envio login`을 다시 실행해 주세요."
+    },
+    "INTERNAL_SERVER_ERROR": {
+      "message": "서버 오류가 발생했습니다.",
+      "hint": "서버가 복구된 뒤 다시 시도해 주세요."
     }
   },
   "warning": {
@@ -74,7 +140,8 @@
       "Command completed": "명령 완료",
       "Login completed": "로그인 완료",
       "Already logged in": "이미 로그인되어 있습니다.",
-      "Create completed": "프로젝트 생성 완료"
+      "Create completed": "프로젝트 생성 완료",
+      "Link completed": "프로젝트 연동 완료"
     }
   },
   "summary": {
@@ -86,8 +153,13 @@
     "Device ID": "기기 ID",
     "Project ID": "프로젝트 ID",
     "Project Name": "프로젝트 이름",
+    "Owner": "소유자",
+    "Repository": "저장소",
     "GitHub Repository": "GitHub 저장소",
+    "Join Status": "가입 상태",
     "Local Repository": "로컬 저장소",
+    "Project Metadata": "프로젝트 메타데이터",
+    "Link Config": "연동 설정",
     "Wrapped Key Targets": "wrapped key 대상 수",
     "Updated Count": "업데이트 수"
   },
@@ -112,6 +184,21 @@
     },
     "save-wrapped-keys": {
       "label": "wrapped key 등록"
+    },
+    "link-project": {
+      "label": "프로젝트 연동"
+    },
+    "unwrap-project-key": {
+      "label": "프로젝트 키 복호화"
+    },
+    "save-project-key": {
+      "label": "프로젝트 키 저장"
+    },
+    "save-project-metadata": {
+      "label": "프로젝트 메타데이터 저장"
+    },
+    "save-link-config": {
+      "label": "연동 설정 저장"
     },
     "detail": {
       "DETAIL_PREPARING": "명령 실행 환경을 확인하는 중",
