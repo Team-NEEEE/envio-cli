@@ -12,7 +12,7 @@ func TestSaveProjectMetadataWritesEnvioJSONWithoutSecrets(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	if err := saveProjectMetadata(root, ProjectMetadata{
+	if err := saveProjectMetadata(root, projectMetadata{
 		SchemaVersion:  1,
 		ProjectID:      1,
 		ProjectName:    "envio-cli",
@@ -33,7 +33,7 @@ func TestSaveProjectMetadataWritesEnvioJSONWithoutSecrets(t *testing.T) {
 			t.Fatalf("envio.json leaked %s: %s", forbidden, content)
 		}
 	}
-	var got ProjectMetadata
+	var got projectMetadata
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}

@@ -12,10 +12,10 @@ import (
 )
 
 type fakeLinkAPI struct {
+	auth  string
 	err   error
 	resp  *projectapi.LinkProjectResponse
 	req   projectapi.LinkProjectRequest
-	auth  string
 	calls int
 }
 
@@ -158,16 +158,16 @@ func TestLinkReturnsUnwrapFailureBeforeSaving(t *testing.T) {
 }
 
 type savedLinkState struct {
-	metadata       ProjectMetadata
-	config         LocalLinkConfig
 	masterKey      []byte
 	metadataRoot   string
 	configRoot     string
-	masterProject  int64
-	masterDevice   int64
+	metadata       projectMetadata
+	config         LocalLinkConfig
 	metadataCalled bool
 	configCalled   bool
 	masterCalled   bool
+	masterProject  int64
+	masterDevice   int64
 }
 
 func newTestLinkService(client *fakeLinkAPI) (*LinkService, *savedLinkState) {
@@ -202,7 +202,7 @@ func newTestLinkService(client *fakeLinkAPI) (*LinkService, *savedLinkState) {
 			saved.masterKey = append([]byte(nil), projectMasterKey...)
 			return nil
 		},
-		saveProjectMetadata: func(root string, metadata ProjectMetadata) error {
+		saveProjectMetadata: func(root string, metadata projectMetadata) error {
 			saved.metadataCalled = true
 			saved.metadataRoot = root
 			saved.metadata = metadata

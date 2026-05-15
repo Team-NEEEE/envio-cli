@@ -15,7 +15,7 @@ const (
 	localLinkConfigName = "config"
 )
 
-type ProjectMetadata struct {
+type projectMetadata struct {
 	ProjectName    string `json:"projectName"`
 	Owner          string `json:"owner"`
 	RepoName       string `json:"repoName"`
@@ -31,7 +31,7 @@ type LocalLinkConfig struct {
 	DeviceID        int64  `json:"deviceId"`
 }
 
-func saveProjectMetadata(repositoryRoot string, metadata ProjectMetadata) error {
+func saveProjectMetadata(repositoryRoot string, metadata projectMetadata) error {
 	if strings.TrimSpace(repositoryRoot) == "" {
 		return errors.New("repository root is required")
 	}
@@ -80,7 +80,7 @@ func ensureLocalLinkConfigPathAvailable(repositoryRoot string) error {
 	return nil
 }
 
-func validateProjectMetadata(metadata ProjectMetadata) error {
+func validateProjectMetadata(metadata projectMetadata) error {
 	if metadata.SchemaVersion <= 0 {
 		return errors.New("project metadata schemaVersion must be positive")
 	}

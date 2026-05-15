@@ -2,18 +2,18 @@ package projectapi
 
 type LinkProjectRequest struct {
 	PublicKey     string `json:"publicKey"`
-	DeviceID      int64  `json:"deviceId"`
 	UserGithubID  string `json:"userGithubId"`
 	RepositoryURL string `json:"repositoryUrl"`
 	Owner         string `json:"owner,omitempty"`
 	RepoName      string `json:"repoName,omitempty"`
+	DeviceID      int64  `json:"deviceId"`
 }
 
 type LinkProjectResponse struct {
 	Message          string        `json:"message"`
-	Project          LinkedProject `json:"project"`
 	WrappedMasterKey string        `json:"wrappedMasterKey"`
 	JoinStatus       string        `json:"joinStatus"`
+	Project          LinkedProject `json:"project"`
 }
 
 type LinkedProject struct {

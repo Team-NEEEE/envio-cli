@@ -68,7 +68,7 @@ type LinkService struct {
 	loadPrivateKey          func(int64) (string, error)
 	unwrapProjectMasterKey  func(string, string) ([]byte, error)
 	saveProjectMasterKey    func(int64, int64, []byte) error
-	saveProjectMetadata     func(string, ProjectMetadata) error
+	saveProjectMetadata     func(string, projectMetadata) error
 	saveLocalLinkConfig     func(string, LocalLinkConfig) error
 	ensureLocalConfigTarget func(string) error
 }
@@ -345,9 +345,9 @@ func validateLinkResponse(response *projectapi.LinkProjectResponse) *command.App
 func projectMetadataFromLinkResponse(
 	response *projectapi.LinkProjectResponse,
 	ref github.RepositoryRef,
-) ProjectMetadata {
+) projectMetadata {
 	project := response.Project
-	metadata := ProjectMetadata{
+	metadata := projectMetadata{
 		SchemaVersion:  1,
 		ProjectID:      project.ProjectID,
 		ProjectName:    strings.TrimSpace(project.ProjectName),
