@@ -123,6 +123,56 @@
     "INTERNAL_SERVER_ERROR": {
       "message": "서버 오류가 발생했습니다.",
       "hint": "서버가 복구된 뒤 다시 시도해 주세요."
+    },
+    "PROJECT_LINK_REQUIRED": {
+      "message": "현재 저장소가 Envio 프로젝트와 연결되어 있지 않습니다.",
+      "hint": "환경변수를 동기화하기 전에 `envio link` 또는 `envio create`를 실행해 주세요."
+    },
+    "LOCAL_SESSION_MISMATCH": {
+      "message": "로컬 프로젝트 세션이 현재 로그인과 일치하지 않습니다.",
+      "hint": "현재 로그인 세션으로 `envio link`를 다시 실행해 주세요."
+    },
+    "PROJECT_MASTER_KEY_REQUIRED": {
+      "message": "프로젝트 마스터 키가 필요합니다.",
+      "hint": "현재 기기에 프로젝트 키를 복구하려면 `envio link`를 다시 실행해 주세요."
+    },
+    "ENVIRONMENT_FILE_NOT_FOUND": {
+      "message": "환경변수 파일이 없습니다."
+    },
+    "ENVIRONMENT_FILE_INVALID": {
+      "message": "환경변수 파일 형식이 올바르지 않습니다."
+    },
+    "ENCRYPT_ENVIRONMENT_FAILED": {
+      "message": "환경변수 암호화에 실패했습니다."
+    },
+    "DECRYPT_ENVIRONMENT_FAILED": {
+      "message": "환경변수 복호화에 실패했습니다."
+    },
+    "PUSH_ENVIRONMENT_FAILED": {
+      "message": "환경변수 업로드에 실패했습니다."
+    },
+    "PULL_ENVIRONMENT_FAILED": {
+      "message": "환경변수 다운로드에 실패했습니다."
+    },
+    "PULL_RESPONSE_INVALID": {
+      "message": "환경변수 다운로드 응답이 올바르지 않습니다."
+    },
+    "PUSH_RESPONSE_INVALID": {
+      "message": "환경변수 업로드 응답이 올바르지 않습니다."
+    },
+    "WRITE_ENVIRONMENT_FILE_FAILED": {
+      "message": "환경변수 파일 저장에 실패했습니다."
+    },
+    "SAVE_SYNC_STATE_FAILED": {
+      "message": "로컬 동기화 상태 저장에 실패했습니다."
+    },
+    "ENVIRONMENT_VERSION_NOT_INITIALIZED": {
+      "message": "이 프로젝트에 등록된 환경변수 버전이 없습니다.",
+      "hint": "첫 환경변수 버전을 만들려면 `envio push`를 실행해 주세요."
+    },
+    "VERSION_CONFLICT": {
+      "message": "로컬 기준 버전이 서버의 최신 버전과 일치하지 않습니다.",
+      "hint": "다시 push하기 전에 `envio pull`을 실행해 주세요."
     }
   },
   "warning": {
@@ -141,7 +191,9 @@
       "Login completed": "로그인 완료",
       "Already logged in": "이미 로그인되어 있습니다.",
       "Create completed": "프로젝트 생성 완료",
-      "Link completed": "프로젝트 연동 완료"
+      "Link completed": "프로젝트 연동 완료",
+      "Push completed": "환경변수 업로드 완료",
+      "Pull completed": "환경변수 다운로드 완료"
     }
   },
   "summary": {
@@ -161,7 +213,12 @@
     "Project Metadata": "프로젝트 메타데이터",
     "Link Config": "연동 설정",
     "Wrapped Key Targets": "wrapped key 대상 수",
-    "Updated Count": "업데이트 수"
+    "Updated Count": "업데이트 수",
+    "Environment File": "환경변수 파일",
+    "Variable Count": "환경변수 수",
+    "Version ID": "버전 ID",
+    "Parent Version ID": "기준 버전 ID",
+    "History ID": "히스토리 ID"
   },
   "step": {
     "prepare": {
@@ -199,6 +256,30 @@
     },
     "save-link-config": {
       "label": "연동 설정 저장"
+    },
+    "load-project-context": {
+      "label": "프로젝트 컨텍스트 로드"
+    },
+    "read-environment-file": {
+      "label": "환경변수 파일 읽기"
+    },
+    "encrypt-environment": {
+      "label": "환경변수 암호화"
+    },
+    "push-environment": {
+      "label": "환경변수 업로드"
+    },
+    "pull-environment": {
+      "label": "환경변수 다운로드"
+    },
+    "decrypt-environment": {
+      "label": "환경변수 복호화"
+    },
+    "write-environment-file": {
+      "label": "환경변수 파일 저장"
+    },
+    "save-sync-state": {
+      "label": "동기화 상태 저장"
     },
     "detail": {
       "DETAIL_PREPARING": "명령 실행 환경을 확인하는 중",

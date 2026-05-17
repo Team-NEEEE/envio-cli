@@ -29,6 +29,7 @@ type LocalLinkConfig struct {
 	UserGithubID    string `json:"userGithubId"`
 	LinkedProjectID int64  `json:"linkedProjectId"`
 	DeviceID        int64  `json:"deviceId"`
+	VersionID       int64  `json:"versionId,omitempty"`
 }
 
 func saveProjectMetadata(repositoryRoot string, metadata projectMetadata) error {
