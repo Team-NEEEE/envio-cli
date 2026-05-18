@@ -49,6 +49,18 @@
     "CREATE_PROJECT_FAILED": {
       "message": "Project creation failed."
     },
+    "GITHUB_APP_NOT_INSTALLED": {
+      "message": "Envio GitHub App is not installed for this repository."
+    },
+    "REPOSITORY_ACCESS_DENIED": {
+      "message": "Envio cannot access this GitHub repository."
+    },
+    "PROJECT_ALREADY_EXISTS": {
+      "message": "This project is already registered in Envio."
+    },
+    "NO_AVAILABLE_MEMBER_DEVICE": {
+      "message": "No collaborator device with a registered public key is available."
+    },
     "WRAP_PROJECT_KEY_FAILED": {
       "message": "Project key wrapping failed."
     },

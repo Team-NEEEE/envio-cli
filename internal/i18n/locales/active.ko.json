@@ -49,6 +49,18 @@
     "CREATE_PROJECT_FAILED": {
       "message": "프로젝트 생성에 실패했습니다."
     },
+    "GITHUB_APP_NOT_INSTALLED": {
+      "message": "이 저장소에 Envio GitHub App이 설치되어 있지 않습니다."
+    },
+    "REPOSITORY_ACCESS_DENIED": {
+      "message": "Envio가 이 GitHub 저장소에 접근할 수 없습니다."
+    },
+    "PROJECT_ALREADY_EXISTS": {
+      "message": "이미 Envio에 등록된 프로젝트입니다."
+    },
+    "NO_AVAILABLE_MEMBER_DEVICE": {
+      "message": "등록된 공개키가 있는 협업자 기기가 없습니다."
+    },
     "WRAP_PROJECT_KEY_FAILED": {
       "message": "프로젝트 키 wrapping에 실패했습니다."
     },

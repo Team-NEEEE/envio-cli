@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Team-NEEEE/envio-cli/internal/api"
 	projectapi "github.com/Team-NEEEE/envio-cli/internal/api/project"
 	"github.com/Team-NEEEE/envio-cli/internal/command"
 	"github.com/Team-NEEEE/envio-cli/internal/config"
@@ -130,6 +131,89 @@ func TestCreateRequiresGlobalSessionBeforeAPI(t *testing.T) {
 	}
 	if saved.called {
 		t.Fatal("project config should not be saved without global session")
+	}
+}
+
+func TestCreateReturnsGitHubAppInstallHintWhenBackendReportsAppNotInstalled(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createErr: &api.ErrorResponse{
+			Status:  api.ErrorStatus("422"),
+			Code:    ErrorGitHubAppNotInstalled,
+			Message: "GitHub App is not installed",
+		},
+	}
+	service, saved := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorGitHubAppNotInstalled {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorGitHubAppNotInstalled)
+	}
+	if !containsAll(appErr.Hint, config.GitHubAppInstallURL, "envio create") {
+		t.Fatalf("GitHub App hint = %q", appErr.Hint)
+	}
+	if client.saveCalls != 0 {
+		t.Fatalf("save calls = %d, want 0", client.saveCalls)
+	}
+	if saved.called {
+		t.Fatal("project config should not be saved when GitHub App is not installed")
+	}
+}
+
+func TestCreateUsesGitHubAppInstallHintForRepositoryAccessDenied(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createErr: &api.ErrorResponse{
+			Status:  api.ErrorStatus("403 FORBIDDEN"),
+			Code:    ErrorRepositoryAccessDenied,
+			Message: "repository access denied",
+		},
+	}
+	service, _ := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorRepositoryAccessDenied {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorRepositoryAccessDenied)
+	}
+	if !strings.Contains(appErr.Hint, config.GitHubAppInstallURL) {
+		t.Fatalf("repository access hint = %q", appErr.Hint)
+	}
+}
+
+func TestCreateFallsBackToGitHubAppInstallHintForUncodedForbiddenError(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createErr: &api.ErrorResponse{
+			Status:  api.ErrorStatus("403 FORBIDDEN"),
+			Message: "forbidden",
+		},
+	}
+	service, _ := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorGitHubAppNotInstalled {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorGitHubAppNotInstalled)
+	}
+	if !strings.Contains(appErr.Hint, config.GitHubAppInstallURL) {
+		t.Fatalf("fallback hint = %q", appErr.Hint)
 	}
 }
 

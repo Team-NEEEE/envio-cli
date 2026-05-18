@@ -3,10 +3,14 @@ package project
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
+	"github.com/Team-NEEEE/envio-cli/internal/api"
 	projectapi "github.com/Team-NEEEE/envio-cli/internal/api/project"
 	"github.com/Team-NEEEE/envio-cli/internal/command"
 	"github.com/Team-NEEEE/envio-cli/internal/config"
@@ -36,6 +40,10 @@ const (
 	ErrorSaveProjectConfigFailed   = "SAVE_PROJECT_CONFIG_FAILED"
 	ErrorCreateResponseInvalid     = "CREATE_RESPONSE_INVALID"
 	ErrorLoginRequired             = "LOGIN_REQUIRED"
+	ErrorGitHubAppNotInstalled     = "GITHUB_APP_NOT_INSTALLED"
+	ErrorRepositoryAccessDenied    = "REPOSITORY_ACCESS_DENIED"
+	ErrorProjectAlreadyExists      = "PROJECT_ALREADY_EXISTS"
+	ErrorNoAvailableMemberDevice   = "NO_AVAILABLE_MEMBER_DEVICE"
 )
 
 const (
@@ -149,12 +157,7 @@ func (s *CreateService) Create(
 	})
 	if err != nil {
 		reporter.UpdateStep(command.StepUpdate{ID: StepCreateProject, Status: command.StatusError})
-		return nil, newCreateAppError(
-			ErrorCreateProjectFailed,
-			"create project request failed",
-			err.Error(),
-			1,
-		)
+		return nil, createAppErrorFromAPI(err)
 	}
 	// 서버 응답에 projectId와 멤버 공개키가 없으면 이후 키 래핑이 성립하지 않으므로 즉시 중단한다.
 	if appErr := validateCreateResponse(createResponse); appErr != nil {
@@ -370,6 +373,121 @@ func validateCreateResponse(response *projectapi.CreateProjectResponse) *command
 		}
 	}
 	return nil
+}
+
+func createAppErrorFromAPI(err error) *command.AppError {
+	var apiErr *api.ErrorResponse
+	if errors.As(err, &apiErr) {
+		code := normalizeCreateAPIErrorCode(apiErr)
+		if code == "" {
+			code = ErrorCreateProjectFailed
+		}
+		message := strings.TrimSpace(apiErr.Message)
+		if message == "" {
+			message = "create project request failed"
+		}
+		return newCreateAppError(code, message, createHintForCode(code), exitCodeForCreateError(code))
+	}
+
+	var httpErr *api.HTTPResponseError
+	if errors.As(err, &httpErr) {
+		switch httpErr.StatusCode {
+		case http.StatusForbidden, http.StatusUnprocessableEntity:
+			return newCreateAppError(
+				ErrorGitHubAppNotInstalled,
+				"GitHub App is not installed for this repository",
+				githubAppInstallHint(),
+				1,
+			)
+		case http.StatusUnauthorized:
+			return newCreateAppError(
+				ErrorUnauthorized,
+				"create project request is unauthorized",
+				createHintForCode(ErrorUnauthorized),
+				1,
+			)
+		}
+	}
+
+	return newCreateAppError(ErrorCreateProjectFailed, "create project request failed", err.Error(), 1)
+}
+
+func normalizeCreateAPIErrorCode(apiErr *api.ErrorResponse) string {
+	if apiErr == nil {
+		return ErrorCreateProjectFailed
+	}
+	code := strings.TrimSpace(apiErr.Code)
+	if code != "" {
+		return code
+	}
+
+	status, ok := createHTTPStatusCode(apiErr.Status)
+	if !ok {
+		return ""
+	}
+	switch status {
+	case http.StatusBadRequest:
+		return ErrorInvalidRepositoryURL
+	case http.StatusUnauthorized:
+		return ErrorUnauthorized
+	case http.StatusForbidden, http.StatusUnprocessableEntity:
+		return ErrorGitHubAppNotInstalled
+	case http.StatusConflict:
+		return ErrorProjectAlreadyExists
+	case http.StatusInternalServerError:
+		return ErrorInternalServer
+	default:
+		return ""
+	}
+}
+
+func createHTTPStatusCode(status api.ErrorStatus) (int, bool) {
+	statusText := strings.TrimSpace(string(status))
+	if fields := strings.Fields(statusText); len(fields) > 0 {
+		statusText = fields[0]
+	}
+	code, err := strconv.Atoi(statusText)
+	if err != nil {
+		return 0, false
+	}
+	return code, true
+}
+
+func createHintForCode(code string) string {
+	switch code {
+	case ErrorGitHubAppNotInstalled, ErrorRepositoryAccessDenied:
+		return githubAppInstallHint()
+	case ErrorInvalidRepositoryURL, ErrorRepositoryURLInvalid:
+		return "Use a valid GitHub repository URL."
+	case ErrorRepositoryParseFailed:
+		return "Use a GitHub repository URL that can be parsed as owner/repo."
+	case ErrorUnauthorized:
+		return "Run `envio login` before creating a project."
+	case ErrorProjectAlreadyExists:
+		return "Run `envio link` to connect this repository to the existing Envio project."
+	case ErrorNoAvailableMemberDevice:
+		return "Ask repository collaborators to run `envio login`, then run `envio create` again."
+	case ErrorInternalServer:
+		return "Try again after the server recovers."
+	default:
+		return ""
+	}
+}
+
+func githubAppInstallHint() string {
+	return fmt.Sprintf(
+		"Install the Envio GitHub App for this repository: %s. After installation, run `envio create` again.",
+		config.GitHubAppInstallURL,
+	)
+}
+
+func exitCodeForCreateError(code string) int {
+	if code == ErrorInvalidRepositoryURL ||
+		code == ErrorRepositoryParseFailed ||
+		code == ErrorRepositoryURLInvalid {
+		return 2
+	}
+	return 1
 }
 
 // wrapMemberKeys는 하나의 프로젝트 마스터 키를 만들고 각 멤버 디바이스 공개키로 암호화한다.

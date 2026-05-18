@@ -35,3 +35,11 @@ func TestAPIURLOrDefault(t *testing.T) {
 		t.Fatalf("APIURLOrDefault() = %q, want %q", got, DefaultAPIURL)
 	}
 }
+
+func TestGitHubAppInstallURLIsFixed(t *testing.T) {
+	t.Parallel()
+
+	if GitHubAppInstallURL != "https://github.com/apps/envio-official/installations/new" {
+		t.Fatalf("GitHubAppInstallURL = %q", GitHubAppInstallURL)
+	}
+}
