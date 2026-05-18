@@ -7,6 +7,12 @@ import (
 	"github.com/Team-NEEEE/envio-cli/internal/cli"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	os.Exit(cli.Run(context.Background(), cli.Runtime{
 		Args:    os.Args[1:],
@@ -15,6 +21,9 @@ func main() {
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
 		CWD:     mustGetwd(),
+		Version: version,
+		Commit:  commit,
+		Date:    date,
 	}))
 }
 

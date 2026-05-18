@@ -16,7 +16,11 @@ import (
 	"github.com/Team-NEEEE/envio-cli/internal/ui"
 )
 
-const defaultVersion = "dev"
+const (
+	defaultVersion = "dev"
+	defaultCommit  = "none"
+	defaultDate    = "unknown"
+)
 
 var completionShells = []string{"bash", "zsh", "fish", "powershell"}
 
@@ -26,6 +30,9 @@ type Runtime struct {
 	Stderr     io.Writer
 	IsTerminal func() bool
 	CWD        string
+	Version    string
+	Commit     string
+	Date       string
 	Args       []string
 	Environ    []string
 }
@@ -81,6 +88,15 @@ func normalizeRuntime(rt Runtime) Runtime {
 	if rt.CWD == "" {
 		rt.CWD = "."
 	}
+	if rt.Version == "" {
+		rt.Version = defaultVersion
+	}
+	if rt.Commit == "" {
+		rt.Commit = defaultCommit
+	}
+	if rt.Date == "" {
+		rt.Date = defaultDate
+	}
 	return rt
 }
 
@@ -90,7 +106,7 @@ func newRootCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitC
 		Short:         rootShort(lang),
 		Long:          rootLong(lang),
 		Example:       rootExample(),
-		Version:       defaultVersion,
+		Version:       rt.Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -119,6 +135,7 @@ func newRootCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitC
 	root.AddCommand(newLoginCommand(rt, lang, global, exitCode))
 	root.AddCommand(newCreateCommand(rt, lang, global, exitCode))
 	root.AddCommand(newLinkCommand(rt, lang, global, exitCode))
+	root.AddCommand(newVersionCommand(lang, rt.Version, rt.Commit, rt.Date))
 	root.AddCommand(newCompletionCommand(lang, root))
 	return root
 }
