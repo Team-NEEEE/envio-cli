@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	EnvAPIURL     = "ENVIO_API_URL"
-	DefaultAPIURL = "http://localhost:8080"
+	EnvAPIURL           = "ENVIO_API_URL"
+	DefaultAPIURL       = "http://localhost:8080"
+	GitHubAppInstallURL = "https://github.com/apps/envio-official/installations/new"
 )
 
 func APIURLFromEnv(env map[string]string) string {

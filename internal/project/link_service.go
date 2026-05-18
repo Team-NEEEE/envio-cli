@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,19 +20,15 @@ import (
 )
 
 const (
-	StepLinkProject         = "link-project"
-	StepUnwrapProjectKey    = "unwrap-project-key"
-	StepSaveProjectKey      = "save-project-key"
-	StepSaveProjectMetadata = "save-project-metadata"
-	StepSaveLinkConfig      = "save-link-config"
+	StepLinkProject      = "link-project"
+	StepUnwrapProjectKey = "unwrap-project-key"
+	StepSaveLinkConfig   = "save-link-config"
 
-	ErrorLinkProjectFailed         = "LINK_PROJECT_FAILED"
-	ErrorLinkResponseInvalid       = "LINK_RESPONSE_INVALID"
-	ErrorUnwrapProjectKeyFailed    = "UNWRAP_PROJECT_KEY_FAILED"
-	ErrorSaveProjectKeyFailed      = "SAVE_PROJECT_KEY_FAILED"
-	ErrorSaveProjectMetadataFailed = "SAVE_PROJECT_METADATA_FAILED"
-	ErrorSaveLinkConfigFailed      = "SAVE_LINK_CONFIG_FAILED"
-	ErrorLocalLinkConfigConflict   = "LOCAL_LINK_CONFIG_CONFLICT"
+	ErrorLinkProjectFailed       = "LINK_PROJECT_FAILED"
+	ErrorLinkResponseInvalid     = "LINK_RESPONSE_INVALID"
+	ErrorUnwrapProjectKeyFailed  = "UNWRAP_PROJECT_KEY_FAILED"
+	ErrorSaveLinkConfigFailed    = "SAVE_LINK_CONFIG_FAILED"
+	ErrorLocalLinkConfigConflict = "LOCAL_LINK_CONFIG_CONFLICT"
 
 	JoinStatusApproved              = "APPROVED"
 	ErrorRepositoryParseFailed      = "REPOSITORY_PARSE_FAILED"
@@ -55,7 +52,6 @@ type LinkResult struct {
 	RepoName            string
 	JoinStatus          string
 	LocalRepositoryRoot string
-	ProjectMetadataPath string
 	LocalConfigPath     string
 	ProjectID           int64
 }
@@ -67,8 +63,7 @@ type LinkService struct {
 	loadGlobalSession       func() (config.GlobalSession, error)
 	loadPrivateKey          func(int64) (string, error)
 	unwrapProjectMasterKey  func(string, string) ([]byte, error)
-	saveProjectMasterKey    func(int64, int64, []byte) error
-	saveProjectMetadata     func(string, projectMetadata) error
+	deleteProjectMasterKey  func(int64, int64) error
 	saveLocalLinkConfig     func(string, LocalLinkConfig) error
 	ensureLocalConfigTarget func(string) error
 }
@@ -87,8 +82,7 @@ func NewLinkService(apiURL string) *LinkService {
 		loadGlobalSession:       config.LoadGlobalSession,
 		loadPrivateKey:          envcrypto.LoadDevicePrivateKey,
 		unwrapProjectMasterKey:  envcrypto.UnwrapProjectMasterKey,
-		saveProjectMasterKey:    envcrypto.SaveProjectMasterKey,
-		saveProjectMetadata:     saveProjectMetadata,
+		deleteProjectMasterKey:  envcrypto.DeleteProjectMasterKey,
 		saveLocalLinkConfig:     saveLocalLinkConfig,
 		ensureLocalConfigTarget: ensureLocalLinkConfigPathAvailable,
 	}
@@ -167,45 +161,40 @@ func (s *LinkService) Link(
 	}
 	reporter.UpdateStep(command.StepUpdate{ID: StepUnwrapProjectKey, Status: command.StatusSuccess})
 
-	reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectKey, Status: command.StatusRunning})
 	projectID := linkResponse.Project.ProjectID
-	if err := s.saveProjectMasterKey(projectID, session.DeviceID, projectMasterKey); err != nil {
-		reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectKey, Status: command.StatusError})
-		return nil, newLinkAppError(ErrorSaveProjectKeyFailed, "save project master key failed", err.Error(), 1)
-	}
-	reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectKey, Status: command.StatusSuccess})
-
-	metadata := projectMetadataFromLinkResponse(linkResponse, inputRef)
 	localConfig := LocalLinkConfig{
 		LinkedProjectID: projectID,
 		RepositoryURL:   resolvedURL,
 		UserGithubID:    session.GithubID,
 		DeviceID:        session.DeviceID,
+		ProjectName:     projectNameFromLinkResponse(linkResponse, inputRef),
+		GithubRepoName:  githubRepoNameFromLinkResponse(linkResponse, inputRef),
+		MasterKey: MasterKeySession{
+			Algorithm: projectMasterKeyAlgorithm,
+			Encoding:  projectMasterKeyEncoding,
+			Value:     base64.StdEncoding.EncodeToString(projectMasterKey),
+		},
 	}
-
-	reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectMetadata, Status: command.StatusRunning})
-	if err := s.saveProjectMetadata(repository.Root, metadata); err != nil {
-		reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectMetadata, Status: command.StatusError})
-		return nil, newLinkAppError(ErrorSaveProjectMetadataFailed, "save project metadata failed", err.Error(), 1)
-	}
-	reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectMetadata, Status: command.StatusSuccess})
 
 	reporter.UpdateStep(command.StepUpdate{ID: StepSaveLinkConfig, Status: command.StatusRunning})
 	if err := s.saveLocalLinkConfig(repository.Root, localConfig); err != nil {
 		reporter.UpdateStep(command.StepUpdate{ID: StepSaveLinkConfig, Status: command.StatusError})
 		return nil, newLinkAppError(ErrorSaveLinkConfigFailed, "save local link config failed", err.Error(), 1)
 	}
+	if err := s.deleteProjectMasterKey(projectID, session.DeviceID); err != nil {
+		reporter.UpdateStep(command.StepUpdate{ID: StepSaveLinkConfig, Status: command.StatusError})
+		return nil, newLinkAppError(ErrorSaveLinkConfigFailed, "delete legacy project master key failed", err.Error(), 1)
+	}
 	reporter.UpdateStep(command.StepUpdate{ID: StepSaveLinkConfig, Status: command.StatusSuccess})
 
 	return &LinkResult{
 		ProjectID:           projectID,
-		ProjectName:         metadata.ProjectName,
-		GithubRepoName:      metadata.GithubRepoName,
-		Owner:               metadata.Owner,
-		RepoName:            metadata.RepoName,
+		ProjectName:         localConfig.ProjectName,
+		GithubRepoName:      localConfig.GithubRepoName,
+		Owner:               inputRef.Owner,
+		RepoName:            inputRef.Repo,
 		JoinStatus:          strings.TrimSpace(linkResponse.JoinStatus),
 		LocalRepositoryRoot: repository.Root,
-		ProjectMetadataPath: projectMetadataPath(repository.Root),
 		LocalConfigPath:     localLinkConfigPath(repository.Root),
 	}, nil
 }
@@ -223,11 +212,8 @@ func (s *LinkService) ensureDefaults() {
 	if s.unwrapProjectMasterKey == nil {
 		s.unwrapProjectMasterKey = envcrypto.UnwrapProjectMasterKey
 	}
-	if s.saveProjectMasterKey == nil {
-		s.saveProjectMasterKey = envcrypto.SaveProjectMasterKey
-	}
-	if s.saveProjectMetadata == nil {
-		s.saveProjectMetadata = saveProjectMetadata
+	if s.deleteProjectMasterKey == nil {
+		s.deleteProjectMasterKey = envcrypto.DeleteProjectMasterKey
 	}
 	if s.saveLocalLinkConfig == nil {
 		s.saveLocalLinkConfig = saveLocalLinkConfig
@@ -342,29 +328,20 @@ func validateLinkResponse(response *projectapi.LinkProjectResponse) *command.App
 	return nil
 }
 
-func projectMetadataFromLinkResponse(
-	response *projectapi.LinkProjectResponse,
-	ref github.RepositoryRef,
-) projectMetadata {
-	project := response.Project
-	metadata := projectMetadata{
-		SchemaVersion:  1,
-		ProjectID:      project.ProjectID,
-		ProjectName:    strings.TrimSpace(project.ProjectName),
-		Owner:          strings.TrimSpace(project.Owner),
-		RepoName:       ref.Repo,
-		GithubRepoName: strings.TrimSpace(project.GithubRepoName),
+func projectNameFromLinkResponse(response *projectapi.LinkProjectResponse, ref github.RepositoryRef) string {
+	name := strings.TrimSpace(response.Project.ProjectName)
+	if name == "" {
+		return ref.Repo
 	}
-	if metadata.ProjectName == "" {
-		metadata.ProjectName = ref.Repo
+	return name
+}
+
+func githubRepoNameFromLinkResponse(response *projectapi.LinkProjectResponse, ref github.RepositoryRef) string {
+	name := strings.TrimSpace(response.Project.GithubRepoName)
+	if name == "" {
+		return ref.String()
 	}
-	if metadata.Owner == "" {
-		metadata.Owner = ref.Owner
-	}
-	if metadata.GithubRepoName == "" {
-		metadata.GithubRepoName = ref.String()
-	}
-	return metadata
+	return name
 }
 
 func linkAppErrorFromAPI(err error) *command.AppError {

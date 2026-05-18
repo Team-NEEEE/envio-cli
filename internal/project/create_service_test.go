@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Team-NEEEE/envio-cli/internal/api"
 	projectapi "github.com/Team-NEEEE/envio-cli/internal/api/project"
 	"github.com/Team-NEEEE/envio-cli/internal/command"
 	"github.com/Team-NEEEE/envio-cli/internal/config"
@@ -78,8 +79,8 @@ func TestCreateSendsGlobalSessionDeviceAndPublicKey(t *testing.T) {
 	if client.saveReq.DeviceID != 20 || client.saveReq.PublicKey != "public-key" {
 		t.Fatalf("save request session fields = %#v", client.saveReq)
 	}
-	if saved.session.MasterKey.Value == "" {
-		t.Fatalf("saved session should include masterKey: %#v", saved.session)
+	if saved.config.MasterKey.Value == "" {
+		t.Fatalf("saved config should include masterKey: %#v", saved.config)
 	}
 }
 
@@ -129,11 +130,120 @@ func TestCreateRequiresGlobalSessionBeforeAPI(t *testing.T) {
 		t.Fatalf("api calls = create %d save %d, want none", client.createCalls, client.saveCalls)
 	}
 	if saved.called {
-		t.Fatal("project session should not be saved without global session")
+		t.Fatal("project config should not be saved without global session")
 	}
 }
 
-func TestCreateCreatesProjectWrapsMembersSavesWrappedKeysAndLocalSession(t *testing.T) {
+func TestCreateReturnsGitHubAppInstallHintWhenBackendReportsAppNotInstalled(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createErr: &api.ErrorResponse{
+			Status:  api.ErrorStatus("422"),
+			Code:    ErrorGitHubAppNotInstalled,
+			Message: "GitHub App is not installed",
+		},
+	}
+	service, saved := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorGitHubAppNotInstalled {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorGitHubAppNotInstalled)
+	}
+	if !containsAll(appErr.Hint, config.GitHubAppInstallURL, "envio create") {
+		t.Fatalf("GitHub App hint = %q", appErr.Hint)
+	}
+	if client.saveCalls != 0 {
+		t.Fatalf("save calls = %d, want 0", client.saveCalls)
+	}
+	if saved.called {
+		t.Fatal("project config should not be saved when GitHub App is not installed")
+	}
+}
+
+func TestCreateUsesGitHubAppInstallHintForRepositoryAccessDenied(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createErr: &api.ErrorResponse{
+			Status:  api.ErrorStatus("403 FORBIDDEN"),
+			Code:    ErrorRepositoryAccessDenied,
+			Message: "repository access denied",
+		},
+	}
+	service, _ := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorRepositoryAccessDenied {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorRepositoryAccessDenied)
+	}
+	if !strings.Contains(appErr.Hint, config.GitHubAppInstallURL) {
+		t.Fatalf("repository access hint = %q", appErr.Hint)
+	}
+}
+
+func TestCreateMapsBackendAccessDeniedCodeToGitHubAppInstallHint(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createErr: &api.ErrorResponse{
+			Status:  api.ErrorStatus("403 FORBIDDEN"),
+			Code:    backendCodeAccessDenied,
+			Message: "요청한 리소스에 접근할 수 없습니다.",
+		},
+	}
+	service, _ := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorGitHubAppNotInstalled {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorGitHubAppNotInstalled)
+	}
+	if !strings.Contains(appErr.Hint, config.GitHubAppInstallURL) {
+		t.Fatalf("access denied hint = %q", appErr.Hint)
+	}
+}
+
+func TestCreateFallsBackToGitHubAppInstallHintForUncodedForbiddenError(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createErr: &api.ErrorResponse{
+			Status:  api.ErrorStatus("403 FORBIDDEN"),
+			Message: "forbidden",
+		},
+	}
+	service, _ := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorGitHubAppNotInstalled {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorGitHubAppNotInstalled)
+	}
+	if !strings.Contains(appErr.Hint, config.GitHubAppInstallURL) {
+		t.Fatalf("fallback hint = %q", appErr.Hint)
+	}
+}
+
+func TestCreateCreatesProjectWrapsMembersSavesWrappedKeysAndLocalConfig(t *testing.T) {
 	t.Parallel()
 
 	client := &fakeCreateAPI{
@@ -179,14 +289,16 @@ func TestCreateCreatesProjectWrapsMembersSavesWrappedKeysAndLocalSession(t *test
 	if saved.root != "C:/repo" {
 		t.Fatalf("saved root = %q", saved.root)
 	}
-	if saved.session.ProjectID != 1 ||
-		saved.session.MasterKey.Algorithm != projectMasterKeyAlgorithm ||
-		saved.session.MasterKey.Encoding != projectMasterKeyEncoding {
-		t.Fatalf("saved session = %#v", saved.session)
+	if saved.config.LinkedProjectID != 1 ||
+		saved.config.UserGithubID != "octocat" ||
+		saved.config.DeviceID != 20 ||
+		saved.config.MasterKey.Algorithm != projectMasterKeyAlgorithm ||
+		saved.config.MasterKey.Encoding != projectMasterKeyEncoding {
+		t.Fatalf("saved config = %#v", saved.config)
 	}
 	wantMasterKey := base64.StdEncoding.EncodeToString([]byte("12345678901234567890123456789012"))
-	if saved.session.MasterKey.Value != wantMasterKey {
-		t.Fatalf("saved master key = %q, want %q", saved.session.MasterKey.Value, wantMasterKey)
+	if saved.config.MasterKey.Value != wantMasterKey {
+		t.Fatalf("saved master key = %q, want %q", saved.config.MasterKey.Value, wantMasterKey)
 	}
 }
 
@@ -211,7 +323,7 @@ func TestCreateRejectsInvalidCreateResponseBeforeWrapping(t *testing.T) {
 		t.Fatalf("save calls = %d, want 0", client.saveCalls)
 	}
 	if saved.called {
-		t.Fatal("project session should not be saved for invalid create response")
+		t.Fatal("project config should not be saved for invalid create response")
 	}
 }
 
@@ -272,7 +384,7 @@ func TestCreateStopsBeforeSaveWhenWrappingFails(t *testing.T) {
 		t.Fatalf("save calls = %d, want 0", client.saveCalls)
 	}
 	if saved.called {
-		t.Fatal("project session should not be saved when wrapping fails")
+		t.Fatal("project config should not be saved when wrapping fails")
 	}
 }
 
@@ -295,7 +407,7 @@ func TestCreateReturnsSaveWrappedKeysFailure(t *testing.T) {
 		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorSaveWrappedKeysFailed)
 	}
 	if saved.called {
-		t.Fatal("project session should not be saved when wrapped key save fails")
+		t.Fatal("project config should not be saved when wrapped key save fails")
 	}
 }
 
@@ -307,7 +419,7 @@ func TestCreateReturnsLocalSessionSaveFailure(t *testing.T) {
 		saveResp:   validSaveResponse(),
 	}
 	service, _ := newTestCreateService(client)
-	service.saveProjectSession = func(string, Session) error {
+	service.saveLocalLinkConfig = func(string, LocalLinkConfig) error {
 		return errors.New("disk full")
 	}
 
@@ -317,19 +429,19 @@ func TestCreateReturnsLocalSessionSaveFailure(t *testing.T) {
 		"https://github.com/Team-NEEEE/envio-cli",
 		command.NoopReporter{},
 	)
-	if appErr == nil || appErr.Code != ErrorSaveProjectSessionFailed {
-		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorSaveProjectSessionFailed)
+	if appErr == nil || appErr.Code != ErrorSaveProjectConfigFailed {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorSaveProjectConfigFailed)
 	}
 }
 
-type savedProjectSession struct {
-	root    string
-	session Session
-	called  bool
+type savedProjectConfig struct {
+	root   string
+	config LocalLinkConfig
+	called bool
 }
 
-func newTestCreateService(client *fakeCreateAPI) (*CreateService, *savedProjectSession) {
-	saved := &savedProjectSession{}
+func newTestCreateService(client *fakeCreateAPI) (*CreateService, *savedProjectConfig) {
+	saved := &savedProjectConfig{}
 	service := &CreateService{
 		client: client,
 		git: &fakeProjectGit{
@@ -353,10 +465,10 @@ func newTestCreateService(client *fakeCreateAPI) (*CreateService, *savedProjectS
 				PublicKey:  "public-key",
 			}, nil
 		},
-		saveProjectSession: func(root string, session Session) error {
+		saveLocalLinkConfig: func(root string, cfg LocalLinkConfig) error {
 			saved.called = true
 			saved.root = root
-			saved.session = session
+			saved.config = cfg
 			return nil
 		},
 	}

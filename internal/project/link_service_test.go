@@ -57,23 +57,21 @@ func TestLinkUsesOriginWhenURLIsOmittedAndSavesNonSensitiveState(t *testing.T) {
 		client.req.DeviceID != 20 {
 		t.Fatalf("link request = %#v", client.req)
 	}
-	if saved.masterProject != 1 || saved.masterDevice != 20 || string(saved.masterKey) != string(testProjectMasterKey()) {
-		t.Fatalf("saved master key = %#v", saved)
-	}
-	if !saved.metadataCalled || !saved.configCalled {
-		t.Fatalf("metadata/config should be saved: %#v", saved)
-	}
-	if saved.metadata.ProjectID != 1 ||
-		saved.metadata.Owner != "Team-NEEEE" ||
-		saved.metadata.RepoName != "envio-cli" ||
-		saved.metadata.GithubRepoName != "Team-NEEEE/envio-cli" {
-		t.Fatalf("metadata = %#v", saved.metadata)
-	}
 	if saved.config.LinkedProjectID != 1 ||
 		saved.config.RepositoryURL != "git@github.com:Team-NEEEE/envio-cli.git" ||
 		saved.config.UserGithubID != "octocat" ||
-		saved.config.DeviceID != 20 {
+		saved.config.DeviceID != 20 ||
+		saved.config.MasterKey.Encoding != projectMasterKeyEncoding {
 		t.Fatalf("local config = %#v", saved.config)
+	}
+	if key, err := projectMasterKeyFromConfig(saved.config); err != nil || string(key) != string(testProjectMasterKey()) {
+		t.Fatalf("saved config master key = %q, err = %v", string(key), err)
+	}
+	if !saved.configCalled {
+		t.Fatalf("config should be saved: %#v", saved)
+	}
+	if saved.deletedProject != 1 || saved.deletedDevice != 20 {
+		t.Fatalf("deleted legacy project key = project %d device %d", saved.deletedProject, saved.deletedDevice)
 	}
 }
 
@@ -95,7 +93,7 @@ func TestLinkStopsBeforeAPIWhenRepositoryContextMismatches(t *testing.T) {
 	if client.calls != 0 {
 		t.Fatalf("api calls = %d, want 0", client.calls)
 	}
-	if saved.metadataCalled || saved.configCalled || saved.masterCalled {
+	if saved.configCalled {
 		t.Fatalf("nothing should be saved on mismatch: %#v", saved)
 	}
 }
@@ -114,7 +112,7 @@ func TestLinkReturnsJoinStatusPendingForUnapprovedSuccessResponse(t *testing.T) 
 	if appErr == nil || appErr.Code != ErrorJoinStatusPending {
 		t.Fatalf("Link() appErr = %#v, want %s", appErr, ErrorJoinStatusPending)
 	}
-	if saved.masterCalled || saved.metadataCalled || saved.configCalled {
+	if saved.configCalled {
 		t.Fatalf("nothing should be saved before approval: %#v", saved)
 	}
 }
@@ -134,7 +132,7 @@ func TestLinkAllowsMissingOptionalJoinStatus(t *testing.T) {
 	if got.JoinStatus != "" {
 		t.Fatalf("JoinStatus = %q, want empty optional value", got.JoinStatus)
 	}
-	if !saved.masterCalled || !saved.metadataCalled || !saved.configCalled {
+	if !saved.configCalled {
 		t.Fatalf("link should save state without optional joinStatus: %#v", saved)
 	}
 }
@@ -152,22 +150,17 @@ func TestLinkReturnsUnwrapFailureBeforeSaving(t *testing.T) {
 	if appErr == nil || appErr.Code != ErrorUnwrapProjectKeyFailed {
 		t.Fatalf("Link() appErr = %#v, want %s", appErr, ErrorUnwrapProjectKeyFailed)
 	}
-	if saved.masterCalled || saved.metadataCalled || saved.configCalled {
+	if saved.configCalled {
 		t.Fatalf("nothing should be saved when unwrap fails: %#v", saved)
 	}
 }
 
 type savedLinkState struct {
-	masterKey      []byte
-	metadataRoot   string
 	configRoot     string
-	metadata       projectMetadata
 	config         LocalLinkConfig
-	metadataCalled bool
 	configCalled   bool
-	masterCalled   bool
-	masterProject  int64
-	masterDevice   int64
+	deletedProject int64
+	deletedDevice  int64
 }
 
 func newTestLinkService(client *fakeLinkAPI) (*LinkService, *savedLinkState) {
@@ -195,17 +188,9 @@ func newTestLinkService(client *fakeLinkAPI) (*LinkService, *savedLinkState) {
 			}
 			return testProjectMasterKey(), nil
 		},
-		saveProjectMasterKey: func(projectID int64, deviceID int64, projectMasterKey []byte) error {
-			saved.masterCalled = true
-			saved.masterProject = projectID
-			saved.masterDevice = deviceID
-			saved.masterKey = append([]byte(nil), projectMasterKey...)
-			return nil
-		},
-		saveProjectMetadata: func(root string, metadata projectMetadata) error {
-			saved.metadataCalled = true
-			saved.metadataRoot = root
-			saved.metadata = metadata
+		deleteProjectMasterKey: func(projectID int64, deviceID int64) error {
+			saved.deletedProject = projectID
+			saved.deletedDevice = deviceID
 			return nil
 		},
 		saveLocalLinkConfig: func(root string, cfg LocalLinkConfig) error {

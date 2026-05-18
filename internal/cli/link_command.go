@@ -87,8 +87,6 @@ func (r linkRunner) Steps() []command.Step {
 		{ID: project.StepCheckRepository, Label: "Check repository", Status: command.StatusPending},
 		{ID: project.StepLinkProject, Label: "Link project", Status: command.StatusPending},
 		{ID: project.StepUnwrapProjectKey, Label: "Unwrap project key", Status: command.StatusPending},
-		{ID: project.StepSaveProjectKey, Label: "Save project key", Status: command.StatusPending},
-		{ID: project.StepSaveProjectMetadata, Label: "Save project metadata", Status: command.StatusPending},
 		{ID: project.StepSaveLinkConfig, Label: "Save link config", Status: command.StatusPending},
 	}
 }
@@ -121,7 +119,6 @@ func (r linkRunner) Run(ctx context.Context, reporter command.Reporter) (command
 	}
 	summary = append(summary,
 		command.SummaryItem{Label: "Local Repository", Value: result.LocalRepositoryRoot},
-		command.SummaryItem{Label: "Project Metadata", Value: result.ProjectMetadataPath},
 		command.SummaryItem{Label: "Link Config", Value: result.LocalConfigPath},
 	)
 

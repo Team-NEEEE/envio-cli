@@ -1,7 +1,6 @@
 package project
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -9,12 +8,12 @@ import (
 	"strings"
 )
 
-const localSessionFile = ".envio"
+const localSessionFile = "session"
+const legacyLocalSessionFile = ".envio"
 const gitignoreFile = ".gitignore"
 
 var localSessionIgnorePatterns = []string{
 	".envio",
-	".envio.tmp",
 	".envio/",
 }
 
@@ -37,36 +36,12 @@ type MasterKeySession struct {
 	Value     string `json:"value"`
 }
 
-func saveProjectSession(repositoryRoot string, session Session) error {
-	if strings.TrimSpace(repositoryRoot) == "" {
-		return errors.New("repository root is required")
-	}
-	if err := validateProjectSession(session); err != nil {
-		return err
-	}
-	if err := ensureProjectSessionIgnored(repositoryRoot); err != nil {
-		return err
-	}
-
-	path := localSessionPath(repositoryRoot)
-	raw, err := json.MarshalIndent(SessionFile{Session: session}, "", "  ")
-	if err != nil {
-		return fmt.Errorf("encode project session: %w", err)
-	}
-
-	tempPath := path + ".tmp"
-	if err := os.WriteFile(tempPath, raw, 0600); err != nil {
-		return fmt.Errorf("write temporary project session: %w", err)
-	}
-	if err := os.Rename(tempPath, path); err != nil {
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("replace project session: %w", err)
-	}
-	return nil
+func localSessionPath(repositoryRoot string) string {
+	return filepath.Join(repositoryRoot, localLinkConfigDir, localSessionFile)
 }
 
-func localSessionPath(repositoryRoot string) string {
-	return filepath.Join(repositoryRoot, localSessionFile)
+func legacyLocalSessionPath(repositoryRoot string) string {
+	return filepath.Join(repositoryRoot, legacyLocalSessionFile)
 }
 
 func ensureProjectSessionIgnored(repositoryRoot string) error {

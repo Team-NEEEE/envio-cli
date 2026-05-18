@@ -64,20 +64,20 @@ func TestSavePublicKey(t *testing.T) {
 	}
 }
 
-func TestSaveAndLoadProjectMasterKey(t *testing.T) {
+func TestDeleteProjectMasterKey(t *testing.T) {
 	keyring.MockInit()
 
-	projectMasterKey := []byte("12345678901234567890123456789012")
-	if err := SaveProjectMasterKey(1, 20, projectMasterKey); err != nil {
-		t.Fatalf("SaveProjectMasterKey() error = %v", err)
+	if err := keyring.Set(serviceName, projectMasterKeyAccount(1, 20), "legacy-master-key"); err != nil {
+		t.Fatalf("keyring.Set() error = %v", err)
 	}
-
-	got, err := LoadProjectMasterKey(1, 20)
-	if err != nil {
-		t.Fatalf("LoadProjectMasterKey() error = %v", err)
+	if err := DeleteProjectMasterKey(1, 20); err != nil {
+		t.Fatalf("DeleteProjectMasterKey() error = %v", err)
 	}
-	if string(got) != string(projectMasterKey) {
-		t.Fatalf("LoadProjectMasterKey() = %q", string(got))
+	if _, err := keyring.Get(serviceName, projectMasterKeyAccount(1, 20)); !errors.Is(err, keyring.ErrNotFound) {
+		t.Fatalf("keyring.Get() error = %v, want ErrNotFound", err)
+	}
+	if err := DeleteProjectMasterKey(1, 20); err != nil {
+		t.Fatalf("DeleteProjectMasterKey() missing key error = %v", err)
 	}
 }
 
@@ -102,10 +102,7 @@ func TestKeychainErrors(t *testing.T) {
 	if _, err := LoadDevicePrivateKey(20); !errors.Is(err, wantErr) {
 		t.Fatalf("LoadDevicePrivateKey() error = %v, want %v", err, wantErr)
 	}
-	if err := SaveProjectMasterKey(1, 20, []byte("12345678901234567890123456789012")); !errors.Is(err, wantErr) {
-		t.Fatalf("SaveProjectMasterKey() error = %v, want %v", err, wantErr)
-	}
-	if _, err := LoadProjectMasterKey(1, 20); !errors.Is(err, wantErr) {
-		t.Fatalf("LoadProjectMasterKey() error = %v, want %v", err, wantErr)
+	if err := DeleteProjectMasterKey(1, 20); !errors.Is(err, wantErr) {
+		t.Fatalf("DeleteProjectMasterKey() error = %v, want %v", err, wantErr)
 	}
 }

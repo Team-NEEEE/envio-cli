@@ -516,8 +516,8 @@ func TestRunPushPlainSuccessEncryptsEnvironment(t *testing.T) {
 	if strings.Contains(out.String(), "secret") || strings.Contains(out.String(), "postgres://") {
 		t.Fatalf("push output leaked environment values: %s", out.String())
 	}
-	if got := readLegacyProjectVersion(t, cwd); got != 3 {
-		t.Fatalf("legacy project session version = %d, want 3", got)
+	if got := readProjectVersion(t, cwd); got != 3 {
+		t.Fatalf("project session version = %d, want 3", got)
 	}
 }
 
@@ -579,8 +579,8 @@ func TestRunPullPlainSuccessWritesEnvironment(t *testing.T) {
 	if strings.Contains(out.String(), "secret") {
 		t.Fatalf("pull output leaked environment values: %s", out.String())
 	}
-	if got := readLegacyProjectVersion(t, cwd); got != 3 {
-		t.Fatalf("legacy project session version = %d, want 3", got)
+	if got := readProjectVersion(t, cwd); got != 3 {
+		t.Fatalf("project session version = %d, want 3", got)
 	}
 }
 
@@ -739,20 +739,32 @@ func writeLegacyProjectSession(t *testing.T, cwd string, masterKey []byte, versi
 	}
 }
 
-func readLegacyProjectVersion(t *testing.T, cwd string) int64 {
+func readProjectVersion(t *testing.T, cwd string) int64 {
 	t.Helper()
 
-	raw, err := os.ReadFile(filepath.Join(cwd, ".envio"))
+	raw, err := os.ReadFile(filepath.Join(cwd, ".envio", "config"))
 	if err != nil {
-		t.Fatalf("ReadFile(.envio) error = %v", err)
+		if os.IsNotExist(err) {
+			raw, err = os.ReadFile(filepath.Join(cwd, ".envio", "session"))
+		}
+		if os.IsNotExist(err) {
+			raw, err = os.ReadFile(filepath.Join(cwd, ".envio"))
+		}
+	}
+	if err != nil {
+		t.Fatalf("ReadFile(project config) error = %v", err)
 	}
 	var payload struct {
-		Session struct {
+		VersionID int64 `json:"versionId"`
+		Session   struct {
 			VersionID int64 `json:"versionId"`
 		} `json:"session"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		t.Fatalf("Unmarshal(.envio) error = %v", err)
+	}
+	if payload.VersionID != 0 {
+		return payload.VersionID
 	}
 	return payload.Session.VersionID
 }
