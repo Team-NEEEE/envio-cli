@@ -456,8 +456,8 @@ func TestRunPushPlainSuccessEncryptsEnvironment(t *testing.T) {
 			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
 		}
 		var body struct {
-			GithubUserID         string         `json:"githubUserId"`
 			EncryptedEnvironment map[string]any `json:"encryptedEnvironment"`
+			GithubUserID         string         `json:"githubUserId"`
 			ParentVersionID      int64          `json:"parentVersionId"`
 		}
 		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {

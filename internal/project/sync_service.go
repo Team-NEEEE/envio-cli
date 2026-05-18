@@ -28,7 +28,7 @@ const (
 	StepPushEnvironment     = "push-environment"
 	StepPullEnvironment     = "pull-environment"
 	StepDecryptEnvironment  = "decrypt-environment"
-	StepWriteEnvironment    = "write-environment-file"
+	StepWriteEnvironment    = "write-environment-file" // #nosec G101 -- step identifier, not a credential.
 	StepSaveSyncState       = "save-sync-state"
 
 	ErrorProjectLinkRequired         = "PROJECT_LINK_REQUIRED"
@@ -100,13 +100,13 @@ const (
 )
 
 type localProjectContext struct {
-	session        Session
-	linkConfig     LocalLinkConfig
 	repositoryRoot string
 	repositoryURL  string
 	githubUserID   string
-	masterKey      []byte
 	source         localProjectSource
+	masterKey      []byte
+	session        Session
+	linkConfig     LocalLinkConfig
 	projectID      int64
 	deviceID       int64
 	versionID      int64

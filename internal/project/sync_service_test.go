@@ -16,12 +16,12 @@ import (
 )
 
 type fakeSyncAPI struct {
-	pullResp  *projectapi.ProjectPullResponse
-	pushResp  *projectapi.ProjectPushResponse
 	pullErr   error
 	pushErr   error
-	pushReq   projectapi.ProjectPushRequest
+	pullResp  *projectapi.ProjectPullResponse
+	pushResp  *projectapi.ProjectPushResponse
 	auth      string
+	pushReq   projectapi.ProjectPushRequest
 	projectID int64
 	pullCalls int
 	pushCalls int
@@ -174,10 +174,10 @@ func TestSyncLoadContextSupportsLegacyProjectSession(t *testing.T) {
 }
 
 type savedSyncState struct {
-	raw       []byte
 	path      string
-	perm      os.FileMode
+	raw       []byte
 	versionID int64
+	perm      os.FileMode
 }
 
 func newTestSyncService(client *fakeSyncAPI) (*SyncService, *savedSyncState) {

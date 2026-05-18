@@ -49,6 +49,9 @@ func TestDecryptEnvironmentRejectsWrongKey(t *testing.T) {
 }
 
 func asStringForTest(value any) string {
-	text, _ := value.(string)
+	text, ok := value.(string)
+	if !ok {
+		return ""
+	}
 	return text
 }
