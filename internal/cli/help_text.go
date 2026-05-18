@@ -67,6 +67,20 @@ func linkShort(lang i18n.Language) string {
 	return "Link the current Git repository to an existing Envio project."
 }
 
+func pushShort(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "로컬 환경변수 파일을 암호화해 업로드합니다."
+	}
+	return "Encrypt and upload a local environment file."
+}
+
+func pullShort(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "최신 환경변수 파일을 내려받아 복호화합니다."
+	}
+	return "Download and decrypt the latest environment file."
+}
+
 func koreanFlagText(name string) string {
 	switch name {
 	case "plain":

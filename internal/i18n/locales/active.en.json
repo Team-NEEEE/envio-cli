@@ -123,6 +123,56 @@
     "INTERNAL_SERVER_ERROR": {
       "message": "A server error occurred.",
       "hint": "Try again after the server recovers."
+    },
+    "PROJECT_LINK_REQUIRED": {
+      "message": "This repository is not linked to an Envio project.",
+      "hint": "Run `envio link` or `envio create` before syncing environment variables."
+    },
+    "LOCAL_SESSION_MISMATCH": {
+      "message": "Local project session does not match the current login.",
+      "hint": "Run `envio link` again with the current login session."
+    },
+    "PROJECT_MASTER_KEY_REQUIRED": {
+      "message": "Project master key is required.",
+      "hint": "Run `envio link` again to restore this project's key on the current device."
+    },
+    "ENVIRONMENT_FILE_NOT_FOUND": {
+      "message": "Environment file does not exist."
+    },
+    "ENVIRONMENT_FILE_INVALID": {
+      "message": "Environment file is invalid."
+    },
+    "ENCRYPT_ENVIRONMENT_FAILED": {
+      "message": "Environment encryption failed."
+    },
+    "DECRYPT_ENVIRONMENT_FAILED": {
+      "message": "Environment decryption failed."
+    },
+    "PUSH_ENVIRONMENT_FAILED": {
+      "message": "Environment push failed."
+    },
+    "PULL_ENVIRONMENT_FAILED": {
+      "message": "Environment pull failed."
+    },
+    "PULL_RESPONSE_INVALID": {
+      "message": "Environment pull response is invalid."
+    },
+    "PUSH_RESPONSE_INVALID": {
+      "message": "Environment push response is invalid."
+    },
+    "WRITE_ENVIRONMENT_FILE_FAILED": {
+      "message": "Environment file write failed."
+    },
+    "SAVE_SYNC_STATE_FAILED": {
+      "message": "Local sync state save failed."
+    },
+    "ENVIRONMENT_VERSION_NOT_INITIALIZED": {
+      "message": "No environment version exists for this project.",
+      "hint": "Run `envio push` to create the first environment version."
+    },
+    "VERSION_CONFLICT": {
+      "message": "The local base version does not match the latest server version.",
+      "hint": "Run `envio pull` before pushing again."
     }
   },
   "warning": {
@@ -141,7 +191,9 @@
       "Login completed": "Login completed",
       "Already logged in": "Already logged in",
       "Create completed": "Create completed",
-      "Link completed": "Link completed"
+      "Link completed": "Link completed",
+      "Push completed": "Push completed",
+      "Pull completed": "Pull completed"
     }
   },
   "summary": {
@@ -161,7 +213,12 @@
     "Project Metadata": "Project metadata",
     "Link Config": "Link config",
     "Wrapped Key Targets": "Wrapped key targets",
-    "Updated Count": "Updated count"
+    "Updated Count": "Updated count",
+    "Environment File": "Environment file",
+    "Variable Count": "Variable count",
+    "Version ID": "Version ID",
+    "Parent Version ID": "Parent version ID",
+    "History ID": "History ID"
   },
   "step": {
     "prepare": {
@@ -199,6 +256,30 @@
     },
     "save-link-config": {
       "label": "Save link config"
+    },
+    "load-project-context": {
+      "label": "Load project context"
+    },
+    "read-environment-file": {
+      "label": "Read environment file"
+    },
+    "encrypt-environment": {
+      "label": "Encrypt environment"
+    },
+    "push-environment": {
+      "label": "Push environment"
+    },
+    "pull-environment": {
+      "label": "Pull environment"
+    },
+    "decrypt-environment": {
+      "label": "Decrypt environment"
+    },
+    "write-environment-file": {
+      "label": "Write environment file"
+    },
+    "save-sync-state": {
+      "label": "Save sync state"
     },
     "detail": {
       "DETAIL_PREPARING": "Checking command execution context",

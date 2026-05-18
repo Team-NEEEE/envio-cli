@@ -28,6 +28,7 @@ type Session struct {
 	GithubRepoName string           `json:"githubRepoName"`
 	RepositoryURL  string           `json:"repositoryUrl"`
 	ProjectID      int64            `json:"projectId"`
+	VersionID      int64            `json:"versionId,omitempty"`
 }
 
 type MasterKeySession struct {

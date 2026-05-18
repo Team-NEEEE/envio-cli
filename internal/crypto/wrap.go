@@ -24,9 +24,16 @@ func GenerateProjectMasterKey() ([]byte, error) {
 	return key, nil
 }
 
-func WrapProjectMasterKey(publicKeyValue string, projectMasterKey []byte) (string, error) {
+func ValidateProjectMasterKey(projectMasterKey []byte) error {
 	if len(projectMasterKey) != projectMasterKeySize {
-		return "", fmt.Errorf("project master key must be %d bytes", projectMasterKeySize)
+		return fmt.Errorf("project master key must be %d bytes", projectMasterKeySize)
+	}
+	return nil
+}
+
+func WrapProjectMasterKey(publicKeyValue string, projectMasterKey []byte) (string, error) {
+	if err := ValidateProjectMasterKey(projectMasterKey); err != nil {
+		return "", err
 	}
 
 	publicKey, err := parseRSAPublicKey(publicKeyValue)
@@ -56,8 +63,8 @@ func UnwrapProjectMasterKey(privateKeyPEM string, wrappedMasterKey string) ([]by
 	if err != nil {
 		return nil, fmt.Errorf("unwrap project master key: %w", err)
 	}
-	if len(projectMasterKey) != projectMasterKeySize {
-		return nil, fmt.Errorf("project master key must be %d bytes", projectMasterKeySize)
+	if err := ValidateProjectMasterKey(projectMasterKey); err != nil {
+		return nil, err
 	}
 	return projectMasterKey, nil
 }

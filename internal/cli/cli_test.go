@@ -3,10 +3,13 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -436,6 +439,151 @@ func TestRunLoginAlreadyLoggedInReturnsWarning(t *testing.T) {
 	}
 }
 
+func TestRunPushPlainSuccessEncryptsEnvironment(t *testing.T) {
+	setCLIUserConfigDir(t)
+	saveValidCLISession(t)
+	cwd := initGitRepository(t, "git@github.com:Team-NEEEE/envio-cli.git")
+	masterKey := []byte("12345678901234567890123456789012")
+	writeLegacyProjectSession(t, cwd, masterKey, 2)
+	if err := os.WriteFile(filepath.Join(cwd, ".env"), []byte("API_KEY=secret\nDATABASE_URL=postgres://localhost/db\n"), 0600); err != nil {
+		t.Fatalf("WriteFile(.env) error = %v", err)
+	}
+
+	var called bool
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		called = true
+		if request.URL.Path != "/api/core/projects/1/push" || request.Method != http.MethodPost {
+			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
+		}
+		var body struct {
+			EncryptedEnvironment map[string]any `json:"encryptedEnvironment"`
+			GithubUserID         string         `json:"githubUserId"`
+			ParentVersionID      int64          `json:"parentVersionId"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatalf("decode push body: %v", err)
+		}
+		if body.GithubUserID != "octocat" || body.ParentVersionID != 2 {
+			t.Fatalf("push body = %#v", body)
+		}
+		decrypted, err := envcrypto.DecryptEnvironment(body.EncryptedEnvironment, masterKey)
+		if err != nil {
+			t.Fatalf("DecryptEnvironment() error = %v", err)
+		}
+		if string(decrypted) != "API_KEY=secret\nDATABASE_URL=postgres://localhost/db\n" {
+			t.Fatalf("decrypted = %q", string(decrypted))
+		}
+
+		writer.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(writer).Encode(map[string]any{
+			"success": true,
+			"data": map[string]any{
+				"message":         "pushed",
+				"historyId":       12,
+				"projectId":       1,
+				"envName":         "envio-cli",
+				"versionId":       3,
+				"parentVersionId": 2,
+			},
+			"error":     nil,
+			"timestamp": "2026-05-12T01:02:17",
+		}); err != nil {
+			t.Fatalf("encode push response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--plain", "--api-url", server.URL, "push"},
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        cwd,
+		IsTerminal: func() bool { return false },
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	if !called {
+		t.Fatal("push API was not called")
+	}
+	if !strings.Contains(out.String(), "OK: Push completed") ||
+		!strings.Contains(out.String(), "Version ID: 3") ||
+		!strings.Contains(out.String(), "Variable count: 2") {
+		t.Fatalf("stdout = %s", out.String())
+	}
+	if strings.Contains(out.String(), "secret") || strings.Contains(out.String(), "postgres://") {
+		t.Fatalf("push output leaked environment values: %s", out.String())
+	}
+	if got := readLegacyProjectVersion(t, cwd); got != 3 {
+		t.Fatalf("legacy project session version = %d, want 3", got)
+	}
+}
+
+func TestRunPullPlainSuccessWritesEnvironment(t *testing.T) {
+	setCLIUserConfigDir(t)
+	saveValidCLISession(t)
+	cwd := initGitRepository(t, "git@github.com:Team-NEEEE/envio-cli.git")
+	masterKey := []byte("12345678901234567890123456789012")
+	writeLegacyProjectSession(t, cwd, masterKey, 2)
+	encrypted, err := envcrypto.EncryptEnvironment([]byte("API_KEY=secret\n"), masterKey)
+	if err != nil {
+		t.Fatalf("EncryptEnvironment() error = %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/core/projects/1/pull/latest" ||
+			request.Method != http.MethodPost ||
+			request.URL.Query().Get("githubUserId") != "octocat" {
+			t.Fatalf("unexpected request: %s %s?%s", request.Method, request.URL.Path, request.URL.RawQuery)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(writer).Encode(map[string]any{
+			"success": true,
+			"data": map[string]any{
+				"message":              "pulled",
+				"historyId":            12,
+				"projectId":            1,
+				"envName":              "envio-cli",
+				"versionId":            3,
+				"encryptedEnvironment": encrypted,
+			},
+			"error":     nil,
+			"timestamp": "2026-05-12T01:02:17",
+		}); err != nil {
+			t.Fatalf("encode pull response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--plain", "--api-url", server.URL, "pull"},
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        cwd,
+		IsTerminal: func() bool { return false },
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	raw, err := os.ReadFile(filepath.Join(cwd, ".env"))
+	if err != nil {
+		t.Fatalf("ReadFile(.env) error = %v", err)
+	}
+	if string(raw) != "API_KEY=secret\n" {
+		t.Fatalf(".env = %q", string(raw))
+	}
+	if strings.Contains(out.String(), "secret") {
+		t.Fatalf("pull output leaked environment values: %s", out.String())
+	}
+	if got := readLegacyProjectVersion(t, cwd); got != 3 {
+		t.Fatalf("legacy project session version = %d, want 3", got)
+	}
+}
+
 func TestRunUnknownCommandDebugUsesJSONContract(t *testing.T) {
 	t.Parallel()
 
@@ -563,4 +711,48 @@ func runGit(t *testing.T, cwd string, args ...string) {
 	if err != nil {
 		t.Fatalf("git %s error = %v, output = %s", strings.Join(args, " "), err, string(output))
 	}
+}
+
+func writeLegacyProjectSession(t *testing.T, cwd string, masterKey []byte, versionID int64) {
+	t.Helper()
+
+	session := map[string]any{
+		"session": map[string]any{
+			"projectId":      1,
+			"projectName":    "envio-cli",
+			"githubRepoName": "Team-NEEEE/envio-cli",
+			"repositoryUrl":  "https://github.com/Team-NEEEE/envio-cli",
+			"versionId":      versionID,
+			"masterKey": map[string]any{
+				"algorithm": "project-master-key-v1",
+				"encoding":  "base64",
+				"value":     base64.StdEncoding.EncodeToString(masterKey),
+			},
+		},
+	}
+	raw, err := json.MarshalIndent(session, "", "  ")
+	if err != nil {
+		t.Fatalf("MarshalIndent(.envio) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cwd, ".envio"), raw, 0600); err != nil {
+		t.Fatalf("WriteFile(.envio) error = %v", err)
+	}
+}
+
+func readLegacyProjectVersion(t *testing.T, cwd string) int64 {
+	t.Helper()
+
+	raw, err := os.ReadFile(filepath.Join(cwd, ".envio"))
+	if err != nil {
+		t.Fatalf("ReadFile(.envio) error = %v", err)
+	}
+	var payload struct {
+		Session struct {
+			VersionID int64 `json:"versionId"`
+		} `json:"session"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatalf("Unmarshal(.envio) error = %v", err)
+	}
+	return payload.Session.VersionID
 }
