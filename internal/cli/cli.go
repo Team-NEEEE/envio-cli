@@ -30,11 +30,11 @@ type Runtime struct {
 	Stderr     io.Writer
 	IsTerminal func() bool
 	CWD        string
-	Args       []string
-	Environ    []string
 	Version    string
 	Commit     string
 	Date       string
+	Args       []string
+	Environ    []string
 }
 
 type globalOptions struct {
