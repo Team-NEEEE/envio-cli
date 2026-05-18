@@ -101,7 +101,7 @@ func (r createRunner) Steps() []command.Step {
 		{ID: project.StepCreateProject, Label: "Create project", Status: command.StatusPending},
 		{ID: project.StepWrapProjectKey, Label: "Wrap project key", Status: command.StatusPending},
 		{ID: project.StepSaveWrappedKeys, Label: "Save wrapped keys", Status: command.StatusPending},
-		{ID: project.StepSaveProjectSession, Label: "Save project session", Status: command.StatusPending},
+		{ID: project.StepSaveProjectConfig, Label: "Save project config", Status: command.StatusPending},
 	}
 }
 
@@ -128,7 +128,7 @@ func (r createRunner) Run(ctx context.Context, reporter command.Reporter) (comma
 			{Label: "Project Name", Value: result.ProjectName},
 			{Label: "GitHub Repository", Value: result.GithubRepoName},
 			{Label: "Local Repository", Value: result.LocalRepositoryRoot},
-			{Label: "Project Session", Value: result.LocalSessionPath},
+			{Label: "Link Config", Value: result.LocalConfigPath},
 			{Label: "Wrapped Key Targets", Value: fmt.Sprintf("%d", result.WrappedKeyTargetCount)},
 			{Label: "Updated Count", Value: fmt.Sprintf("%d", result.UpdatedCount)},
 		},

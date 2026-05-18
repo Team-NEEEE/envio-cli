@@ -10,36 +10,19 @@ import (
 )
 
 const (
-	projectMetadataFile = "envio.json"
 	localLinkConfigDir  = ".envio"
 	localLinkConfigName = "config"
 )
 
-type projectMetadata struct {
-	ProjectName    string `json:"projectName"`
-	Owner          string `json:"owner"`
-	RepoName       string `json:"repoName"`
-	GithubRepoName string `json:"githubRepoName"`
-	SchemaVersion  int    `json:"schemaVersion"`
-	ProjectID      int64  `json:"projectId"`
-}
-
 type LocalLinkConfig struct {
-	RepositoryURL   string `json:"repositoryUrl"`
-	UserGithubID    string `json:"userGithubId"`
-	LinkedProjectID int64  `json:"linkedProjectId"`
-	DeviceID        int64  `json:"deviceId"`
-	VersionID       int64  `json:"versionId,omitempty"`
-}
-
-func saveProjectMetadata(repositoryRoot string, metadata projectMetadata) error {
-	if strings.TrimSpace(repositoryRoot) == "" {
-		return errors.New("repository root is required")
-	}
-	if err := validateProjectMetadata(metadata); err != nil {
-		return err
-	}
-	return writeJSONAtomic(projectMetadataPath(repositoryRoot), metadata, 0644)
+	RepositoryURL   string           `json:"repositoryUrl"`
+	UserGithubID    string           `json:"userGithubId"`
+	ProjectName     string           `json:"projectName,omitempty"`
+	GithubRepoName  string           `json:"githubRepoName,omitempty"`
+	MasterKey       MasterKeySession `json:"masterKey"`
+	LinkedProjectID int64            `json:"linkedProjectId"`
+	DeviceID        int64            `json:"deviceId"`
+	VersionID       int64            `json:"versionId,omitempty"`
 }
 
 func saveLocalLinkConfig(repositoryRoot string, cfg LocalLinkConfig) error {
@@ -49,17 +32,13 @@ func saveLocalLinkConfig(repositoryRoot string, cfg LocalLinkConfig) error {
 	if err := validateLocalLinkConfig(cfg); err != nil {
 		return err
 	}
-	if err := ensureLocalLinkConfigPathAvailable(repositoryRoot); err != nil {
+	if err := ensureLocalEnvioDir(repositoryRoot); err != nil {
 		return err
 	}
 	if err := ensureProjectSessionIgnored(repositoryRoot); err != nil {
 		return err
 	}
 	return writeJSONAtomic(localLinkConfigPath(repositoryRoot), cfg, 0600)
-}
-
-func projectMetadataPath(repositoryRoot string) string {
-	return filepath.Join(repositoryRoot, projectMetadataFile)
 }
 
 func localLinkConfigPath(repositoryRoot string) string {
@@ -76,29 +55,29 @@ func ensureLocalLinkConfigPathAvailable(repositoryRoot string) error {
 		return fmt.Errorf("inspect local link config path: %w", err)
 	}
 	if !info.IsDir() {
+		if _, err := readProjectSessionFile(path); err == nil {
+			return nil
+		}
 		return fmt.Errorf("%s exists as a file; .envio/config cannot be created without migrating the existing file", path)
 	}
 	return nil
 }
 
-func validateProjectMetadata(metadata projectMetadata) error {
-	if metadata.SchemaVersion <= 0 {
-		return errors.New("project metadata schemaVersion must be positive")
+func ensureLocalEnvioDir(repositoryRoot string) error {
+	if err := ensureLocalLinkConfigPathAvailable(repositoryRoot); err != nil {
+		return err
 	}
-	if metadata.ProjectID <= 0 {
-		return errors.New("project metadata projectId must be positive")
+	path := filepath.Join(repositoryRoot, localLinkConfigDir)
+	if info, err := os.Stat(path); err == nil && !info.IsDir() {
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("migrate legacy .envio file: %w", err)
+		}
 	}
-	if strings.TrimSpace(metadata.ProjectName) == "" {
-		return errors.New("project metadata projectName is required")
+	if err := os.MkdirAll(path, 0700); err != nil {
+		return fmt.Errorf("create .envio directory: %w", err)
 	}
-	if strings.TrimSpace(metadata.Owner) == "" {
-		return errors.New("project metadata owner is required")
-	}
-	if strings.TrimSpace(metadata.RepoName) == "" {
-		return errors.New("project metadata repoName is required")
-	}
-	if strings.TrimSpace(metadata.GithubRepoName) == "" {
-		return errors.New("project metadata githubRepoName is required")
+	if err := hideLocalEnvioDir(path); err != nil {
+		return fmt.Errorf("hide .envio directory: %w", err)
 	}
 	return nil
 }
@@ -115,6 +94,15 @@ func validateLocalLinkConfig(cfg LocalLinkConfig) error {
 	}
 	if cfg.DeviceID <= 0 {
 		return errors.New("local link config deviceId must be positive")
+	}
+	if strings.TrimSpace(cfg.MasterKey.Algorithm) == "" {
+		return errors.New("local link config masterKey.algorithm is required")
+	}
+	if strings.TrimSpace(cfg.MasterKey.Encoding) == "" {
+		return errors.New("local link config masterKey.encoding is required")
+	}
+	if strings.TrimSpace(cfg.MasterKey.Value) == "" {
+		return errors.New("local link config masterKey.value is required")
 	}
 	return nil
 }

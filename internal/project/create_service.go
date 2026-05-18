@@ -24,8 +24,8 @@ const (
 	StepWrapProjectKey = "wrap-project-key"
 	// StepSaveWrappedKeys StepSaveWrappedKeys는 암호화된 프로젝트 마스터 키 목록을 백엔드에 등록하는 단계다.
 	StepSaveWrappedKeys = "save-wrapped-keys"
-	// StepSaveProjectSession StepSaveProjectSession은 저장소 루트의 .envio 파일에 프로젝트 세션을 저장하는 단계다.
-	StepSaveProjectSession = "save-project-session"
+	// StepSaveProjectConfig stores the project config under .envio/config.
+	StepSaveProjectConfig = "save-project-config"
 
 	ErrorGitRepositoryRequired     = "GIT_REPOSITORY_REQUIRED"
 	ErrorRepositoryURLInvalid      = "REPOSITORY_URL_INVALID"
@@ -33,7 +33,7 @@ const (
 	ErrorCreateProjectFailed       = "CREATE_PROJECT_FAILED"
 	ErrorWrapProjectKeyFailed      = "WRAP_PROJECT_KEY_FAILED"
 	ErrorSaveWrappedKeysFailed     = "SAVE_WRAPPED_KEYS_FAILED"
-	ErrorSaveProjectSessionFailed  = "SAVE_PROJECT_SESSION_FAILED"
+	ErrorSaveProjectConfigFailed   = "SAVE_PROJECT_CONFIG_FAILED"
 	ErrorCreateResponseInvalid     = "CREATE_RESPONSE_INVALID"
 	ErrorLoginRequired             = "LOGIN_REQUIRED"
 )
@@ -49,7 +49,7 @@ type CreateResult struct {
 	ProjectName           string
 	GithubRepoName        string
 	LocalRepositoryRoot   string
-	LocalSessionPath      string
+	LocalConfigPath       string
 	ProjectID             int64
 	WrappedKeyTargetCount int
 	UpdatedCount          int
@@ -63,7 +63,7 @@ type CreateService struct {
 	git                      workspace.GitInspector
 	generateProjectMasterKey func() ([]byte, error)
 	wrapProjectMasterKey     func(string, []byte) (string, error)
-	saveProjectSession       func(string, Session) error
+	saveLocalLinkConfig      func(string, LocalLinkConfig) error
 	loadGlobalSession        func() (config.GlobalSession, error)
 }
 
@@ -83,7 +83,7 @@ func NewCreateService(apiURL string) *CreateService {
 		git:                      workspace.NewGitInspector(nil),
 		generateProjectMasterKey: envcrypto.GenerateProjectMasterKey,
 		wrapProjectMasterKey:     envcrypto.WrapProjectMasterKey,
-		saveProjectSession:       saveProjectSession,
+		saveLocalLinkConfig:      saveLocalLinkConfig,
 		loadGlobalSession:        config.LoadGlobalSession,
 	}
 }
@@ -195,7 +195,7 @@ func (s *CreateService) Create(
 		ProjectName:           createResponse.ProjectName,
 		GithubRepoName:        createResponse.GithubRepoName,
 		LocalRepositoryRoot:   repository.Root,
-		LocalSessionPath:      localSessionPath(repository.Root),
+		LocalConfigPath:       localLinkConfigPath(repository.Root),
 		WrappedKeyTargetCount: len(wrappedKeys),
 	}
 	if result.ProjectName == "" {
@@ -209,28 +209,30 @@ func (s *CreateService) Create(
 		result.UpdatedCount = saveResponse.UpdatedCount
 	}
 
-	reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectSession, Status: command.StatusRunning})
+	reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectConfig, Status: command.StatusRunning})
 	// .envio는 Git 저장소 루트 바로 아래에 저장된다. repository.Root는 .git이 있는 작업 트리 루트다.
-	if err := s.saveProjectSession(repository.Root, Session{
-		ProjectID:      result.ProjectID,
-		ProjectName:    result.ProjectName,
-		GithubRepoName: result.GithubRepoName,
-		RepositoryURL:  repositoryURL,
+	if err := s.saveLocalLinkConfig(repository.Root, LocalLinkConfig{
+		LinkedProjectID: result.ProjectID,
+		ProjectName:     result.ProjectName,
+		GithubRepoName:  result.GithubRepoName,
+		RepositoryURL:   repositoryURL,
+		UserGithubID:    globalSession.GithubID,
+		DeviceID:        globalSession.DeviceID,
 		MasterKey: MasterKeySession{
 			Algorithm: projectMasterKeyAlgorithm,
 			Encoding:  projectMasterKeyEncoding,
 			Value:     base64.StdEncoding.EncodeToString(projectMasterKey),
 		},
 	}); err != nil {
-		reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectSession, Status: command.StatusError})
+		reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectConfig, Status: command.StatusError})
 		return nil, newCreateAppError(
-			ErrorSaveProjectSessionFailed,
-			"save project session failed",
+			ErrorSaveProjectConfigFailed,
+			"save project config failed",
 			err.Error(),
 			1,
 		)
 	}
-	reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectSession, Status: command.StatusSuccess})
+	reporter.UpdateStep(command.StepUpdate{ID: StepSaveProjectConfig, Status: command.StatusSuccess})
 
 	return result, nil
 }
@@ -246,8 +248,8 @@ func (s *CreateService) ensureDefaults() {
 	if s.wrapProjectMasterKey == nil {
 		s.wrapProjectMasterKey = envcrypto.WrapProjectMasterKey
 	}
-	if s.saveProjectSession == nil {
-		s.saveProjectSession = saveProjectSession
+	if s.saveLocalLinkConfig == nil {
+		s.saveLocalLinkConfig = saveLocalLinkConfig
 	}
 	if s.loadGlobalSession == nil {
 		s.loadGlobalSession = config.LoadGlobalSession

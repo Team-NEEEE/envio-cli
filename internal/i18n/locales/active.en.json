@@ -55,6 +55,9 @@
     "SAVE_WRAPPED_KEYS_FAILED": {
       "message": "Wrapped key registration failed."
     },
+    "SAVE_PROJECT_CONFIG_FAILED": {
+      "message": "Project config save failed."
+    },
     "CREATE_RESPONSE_INVALID": {
       "message": "Project creation response is invalid."
     },
@@ -241,6 +244,9 @@
     },
     "save-wrapped-keys": {
       "label": "Save wrapped keys"
+    },
+    "save-project-config": {
+      "label": "Save project config"
     },
     "link-project": {
       "label": "Link project"

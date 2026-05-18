@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"encoding/base64"
+	"errors"
 	"fmt"
 
 	"github.com/zalando/go-keyring"
@@ -51,38 +51,18 @@ func LoadDevicePrivateKey(deviceID int64) (string, error) {
 	return "", err
 }
 
-func SaveProjectMasterKey(projectID int64, deviceID int64, projectMasterKey []byte) error {
+func DeleteProjectMasterKey(projectID int64, deviceID int64) error {
 	if projectID <= 0 {
 		return fmt.Errorf("projectId must be positive")
 	}
 	if deviceID <= 0 {
 		return fmt.Errorf("deviceId must be positive")
 	}
-	if len(projectMasterKey) != projectMasterKeySize {
-		return fmt.Errorf("project master key must be %d bytes", projectMasterKeySize)
+	err := keyring.Delete(serviceName, projectMasterKeyAccount(projectID, deviceID))
+	if errors.Is(err, keyring.ErrNotFound) {
+		return nil
 	}
-	return keyring.Set(serviceName, projectMasterKeyAccount(projectID, deviceID), base64.StdEncoding.EncodeToString(projectMasterKey))
-}
-
-func LoadProjectMasterKey(projectID int64, deviceID int64) ([]byte, error) {
-	if projectID <= 0 {
-		return nil, fmt.Errorf("projectId must be positive")
-	}
-	if deviceID <= 0 {
-		return nil, fmt.Errorf("deviceId must be positive")
-	}
-	encoded, err := keyring.Get(serviceName, projectMasterKeyAccount(projectID, deviceID))
-	if err != nil {
-		return nil, err
-	}
-	projectMasterKey, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return nil, fmt.Errorf("decode project master key: %w", err)
-	}
-	if len(projectMasterKey) != projectMasterKeySize {
-		return nil, fmt.Errorf("project master key must be %d bytes", projectMasterKeySize)
-	}
-	return projectMasterKey, nil
+	return err
 }
 
 func devicePrivateKeyAccount(deviceID int64) string {

@@ -77,7 +77,6 @@ type SyncService struct {
 	clientErr          error
 	git                workspace.GitInspector
 	loadGlobalSession  func() (config.GlobalSession, error)
-	loadProjectKey     func(int64, int64) ([]byte, error)
 	readFile           func(string) ([]byte, error)
 	writeFile          func(string, []byte, os.FileMode) error
 	parseEnvironment   func([]byte) (map[string]string, error)
@@ -293,9 +292,6 @@ func (s *SyncService) ensureDefaults() {
 	if s.loadGlobalSession == nil {
 		s.loadGlobalSession = config.LoadGlobalSession
 	}
-	if s.loadProjectKey == nil {
-		s.loadProjectKey = envcrypto.LoadProjectMasterKey
-	}
 	if s.readFile == nil {
 		s.readFile = os.ReadFile
 	}
@@ -386,11 +382,11 @@ func (s *SyncService) localContextFromLinkConfig(
 		)
 	}
 
-	masterKey, err := s.loadProjectKey(linkConfig.LinkedProjectID, linkConfig.DeviceID)
+	masterKey, err := projectMasterKeyFromConfig(linkConfig)
 	if err != nil {
 		return localProjectContext{}, newSyncAppError(
 			ErrorProjectMasterKeyRequired,
-			"project master key could not be loaded",
+			"project master key could not be loaded from local config",
 			"Run `envio link` again to restore this project's key on the current device.",
 			1,
 		)
@@ -509,7 +505,25 @@ func loadLocalLinkConfig(repositoryRoot string) (LocalLinkConfig, error) {
 }
 
 func loadProjectSession(repositoryRoot string) (Session, error) {
-	raw, err := os.ReadFile(localSessionPath(repositoryRoot))
+	legacyPath := legacyLocalSessionPath(repositoryRoot)
+	if info, err := os.Stat(legacyPath); err == nil && !info.IsDir() {
+		return readProjectSessionFile(legacyPath)
+	} else if err != nil && !os.IsNotExist(err) {
+		return Session{}, err
+	}
+
+	session, err := readProjectSessionFile(localSessionPath(repositoryRoot))
+	if err == nil {
+		return session, nil
+	}
+	if !os.IsNotExist(err) {
+		return Session{}, err
+	}
+	return Session{}, err
+}
+
+func readProjectSessionFile(path string) (Session, error) {
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		return Session{}, err
 	}
@@ -521,10 +535,18 @@ func loadProjectSession(repositoryRoot string) (Session, error) {
 }
 
 func projectMasterKeyFromSession(session Session) ([]byte, error) {
-	if !strings.EqualFold(strings.TrimSpace(session.MasterKey.Encoding), projectMasterKeyEncoding) {
-		return nil, fmt.Errorf("unsupported project master key encoding: %s", session.MasterKey.Encoding)
+	return projectMasterKeyFromMasterKeySession(session.MasterKey)
+}
+
+func projectMasterKeyFromConfig(cfg LocalLinkConfig) ([]byte, error) {
+	return projectMasterKeyFromMasterKeySession(cfg.MasterKey)
+}
+
+func projectMasterKeyFromMasterKeySession(masterKeySession MasterKeySession) ([]byte, error) {
+	if !strings.EqualFold(strings.TrimSpace(masterKeySession.Encoding), projectMasterKeyEncoding) {
+		return nil, fmt.Errorf("unsupported project master key encoding: %s", masterKeySession.Encoding)
 	}
-	masterKey, err := base64.StdEncoding.DecodeString(strings.TrimSpace(session.MasterKey.Value))
+	masterKey, err := base64.StdEncoding.DecodeString(strings.TrimSpace(masterKeySession.Value))
 	if err != nil {
 		return nil, fmt.Errorf("decode project master key: %w", err)
 	}
@@ -546,7 +568,16 @@ func saveLocalVersion(local localProjectContext, versionID int64) error {
 	case localProjectSourceSession:
 		session := local.session
 		session.VersionID = versionID
-		return saveProjectSession(local.repositoryRoot, session)
+		return saveLocalLinkConfig(local.repositoryRoot, LocalLinkConfig{
+			LinkedProjectID: session.ProjectID,
+			ProjectName:     session.ProjectName,
+			GithubRepoName:  session.GithubRepoName,
+			RepositoryURL:   session.RepositoryURL,
+			UserGithubID:    local.githubUserID,
+			DeviceID:        local.deviceID,
+			VersionID:       session.VersionID,
+			MasterKey:       session.MasterKey,
+		})
 	default:
 		return fmt.Errorf("unknown local project source: %s", local.source)
 	}
