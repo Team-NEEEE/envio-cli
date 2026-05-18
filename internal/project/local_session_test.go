@@ -43,17 +43,3 @@ func TestValidateProjectSessionRequiresMasterKeyFields(t *testing.T) {
 		t.Fatal("validateProjectSession() error = nil, want masterKey validation error")
 	}
 }
-
-func validProjectSession() Session {
-	return Session{
-		ProjectID:      1,
-		ProjectName:    "envio-cli",
-		GithubRepoName: "Team-NEEEE/envio-cli",
-		RepositoryURL:  "https://github.com/Team-NEEEE/envio-cli",
-		MasterKey: MasterKeySession{
-			Algorithm: projectMasterKeyAlgorithm,
-			Encoding:  projectMasterKeyEncoding,
-			Value:     "base64-master-key",
-		},
-	}
-}
