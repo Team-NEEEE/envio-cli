@@ -89,6 +89,55 @@ func TestRunWithoutCommandShowsHelp(t *testing.T) {
 	}
 }
 
+func TestRunVersionPrintsDefaultBuildInfo(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:   []string{"version"},
+		Stdout: &out,
+		Stderr: &errOut,
+		CWD:    t.TempDir(),
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	want := "envio version dev\ncommit: none\nbuilt: unknown\n"
+	if out.String() != want {
+		t.Fatalf("version output = %q, want %q", out.String(), want)
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("stderr = %s, want empty", errOut.String())
+	}
+}
+
+func TestRunVersionPrintsRuntimeBuildInfo(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:    []string{"version"},
+		Stdout:  &out,
+		Stderr:  &errOut,
+		CWD:     t.TempDir(),
+		Version: "v0.1.0",
+		Commit:  "abc123",
+		Date:    "2026-05-15T00:00:00Z",
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	want := "envio version v0.1.0\ncommit: abc123\nbuilt: 2026-05-15T00:00:00Z\n"
+	if out.String() != want {
+		t.Fatalf("version output = %q, want %q", out.String(), want)
+	}
+	if errOut.Len() != 0 {
+		t.Fatalf("stderr = %s, want empty", errOut.String())
+	}
+}
+
 func TestRunUnknownCommandPlainShowsUsageAndAvailableCommands(t *testing.T) {
 	t.Parallel()
 

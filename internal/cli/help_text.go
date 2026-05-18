@@ -30,6 +30,13 @@ func completionShort(lang i18n.Language) string {
 	return "Generate shell completion scripts"
 }
 
+func versionShort(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "Envio 버전 정보를 출력합니다."
+	}
+	return "Print envio version information"
+}
+
 func flagText(lang i18n.Language, name string) string {
 	if lang == i18n.Korean {
 		if text := koreanFlagText(name); text != "" {
