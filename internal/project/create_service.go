@@ -417,13 +417,23 @@ func normalizeCreateAPIErrorCode(apiErr *api.ErrorResponse) string {
 		return ErrorCreateProjectFailed
 	}
 	code := strings.TrimSpace(apiErr.Code)
-	if code != "" {
+	switch code {
+	case ErrorGitHubAppNotInstalled,
+		ErrorRepositoryAccessDenied,
+		ErrorInvalidRepositoryURL,
+		ErrorRepositoryParseFailed,
+		ErrorProjectAlreadyExists,
+		ErrorNoAvailableMemberDevice,
+		ErrorUnauthorized,
+		ErrorInternalServer:
 		return code
+	case backendCodeAccessDenied:
+		return ErrorGitHubAppNotInstalled
 	}
 
 	status, ok := createHTTPStatusCode(apiErr.Status)
 	if !ok {
-		return ""
+		return code
 	}
 	switch status {
 	case http.StatusBadRequest:

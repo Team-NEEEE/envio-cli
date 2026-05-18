@@ -192,6 +192,32 @@ func TestCreateUsesGitHubAppInstallHintForRepositoryAccessDenied(t *testing.T) {
 	}
 }
 
+func TestCreateMapsBackendAccessDeniedCodeToGitHubAppInstallHint(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeCreateAPI{
+		createErr: &api.ErrorResponse{
+			Status:  api.ErrorStatus("403 FORBIDDEN"),
+			Code:    backendCodeAccessDenied,
+			Message: "요청한 리소스에 접근할 수 없습니다.",
+		},
+	}
+	service, _ := newTestCreateService(client)
+
+	_, appErr := service.Create(
+		context.Background(),
+		"C:/repo",
+		"https://github.com/Team-NEEEE/envio-cli",
+		command.NoopReporter{},
+	)
+	if appErr == nil || appErr.Code != ErrorGitHubAppNotInstalled {
+		t.Fatalf("Create() appErr = %#v, want %s", appErr, ErrorGitHubAppNotInstalled)
+	}
+	if !strings.Contains(appErr.Hint, config.GitHubAppInstallURL) {
+		t.Fatalf("access denied hint = %q", appErr.Hint)
+	}
+}
+
 func TestCreateFallsBackToGitHubAppInstallHintForUncodedForbiddenError(t *testing.T) {
 	t.Parallel()
 
