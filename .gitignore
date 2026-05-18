@@ -10,6 +10,7 @@
 *.dylib
 *.test
 *.out
+dist/
 vendor/
 coverage.txt
 
