@@ -940,10 +940,10 @@ func readProjectVersion(t *testing.T, cwd string) int64 {
 
 	raw, err := os.ReadFile(filepath.Join(cwd, ".envio", "config"))
 	if err != nil {
-		if os.IsNotExist(err) {
+		if shouldTryLegacyProjectPath(err) {
 			raw, err = os.ReadFile(filepath.Join(cwd, ".envio", "session"))
 		}
-		if os.IsNotExist(err) {
+		if shouldTryLegacyProjectPath(err) {
 			raw, err = os.ReadFile(filepath.Join(cwd, ".envio"))
 		}
 	}
@@ -963,4 +963,14 @@ func readProjectVersion(t *testing.T, cwd string) int64 {
 		return payload.VersionID
 	}
 	return payload.Session.VersionID
+}
+
+func shouldTryLegacyProjectPath(err error) bool {
+	if err == nil {
+		return false
+	}
+	if os.IsNotExist(err) {
+		return true
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "not a directory")
 }
