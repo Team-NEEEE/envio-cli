@@ -27,6 +27,7 @@ const (
 	StepEncryptEnvironment  = "encrypt-environment"
 	StepPushEnvironment     = "push-environment"
 	StepPullEnvironment     = "pull-environment"
+	StepListHistory         = "list-history"
 	StepDecryptEnvironment  = "decrypt-environment"
 	StepWriteEnvironment    = "write-environment-file" // #nosec G101 -- step identifier, not a credential.
 	StepSaveSyncState       = "save-sync-state"
@@ -40,6 +41,9 @@ const (
 	ErrorDecryptEnvironmentFailed    = "DECRYPT_ENVIRONMENT_FAILED"
 	ErrorPushEnvironmentFailed       = "PUSH_ENVIRONMENT_FAILED"
 	ErrorPullEnvironmentFailed       = "PULL_ENVIRONMENT_FAILED"
+	ErrorHistoryFailed               = "HISTORY_FAILED"
+	ErrorHistoryResponseInvalid      = "HISTORY_RESPONSE_INVALID"
+	ErrorHistoryVersionNotFound      = "HISTORY_VERSION_NOT_FOUND"
 	ErrorPullResponseInvalid         = "PULL_RESPONSE_INVALID"
 	ErrorPushResponseInvalid         = "PUSH_RESPONSE_INVALID"
 	ErrorWriteEnvironmentFileFailed  = "WRITE_ENVIRONMENT_FILE_FAILED"
@@ -72,6 +76,35 @@ type PullResult struct {
 	HistoryID       int64
 }
 
+type HistoryEntry struct {
+	EncryptedEnvironment map[string]any
+	GithubID             string
+	CreatedAt            string
+	HistoryID            int64
+	ProjectID            int64
+	VersionID            int64
+	BaseVersionID        int64
+	Latest               bool
+}
+
+type HistoryListResult struct {
+	LocalRepository string
+	Histories       []HistoryEntry
+	ProjectID       int64
+}
+
+type HistoryVersionResult struct {
+	Environment     string
+	LocalRepository string
+	GithubID        string
+	CreatedAt       string
+	HistoryID       int64
+	ProjectID       int64
+	VersionID       int64
+	BaseVersionID   int64
+	VariableCount   int
+}
+
 type SyncService struct {
 	client             syncAPI
 	clientErr          error
@@ -89,6 +122,7 @@ type SyncService struct {
 type syncAPI interface {
 	PullLatest(context.Context, int64, string, string) (*projectapi.ProjectPullResponse, error)
 	Push(context.Context, int64, projectapi.ProjectPushRequest, string) (*projectapi.ProjectPushResponse, error)
+	History(context.Context, int64, string) (*projectapi.ProjectHistoryResponse, error)
 }
 
 type localProjectSource string
