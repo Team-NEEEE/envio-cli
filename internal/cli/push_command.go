@@ -27,9 +27,11 @@ type pushRunner struct {
 
 func newPushCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitCode *int) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "push [env-file]",
-		Short: pushShort(lang),
-		Args:  validateOptionalEnvironmentFileArg(),
+		Use:     "push [env-file]",
+		Short:   pushShort(lang),
+		Long:    pushLong(lang),
+		Example: pushExample(lang),
+		Args:    validateOptionalEnvironmentFileArg(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := ui.ModeAuto
 			if global.plain {

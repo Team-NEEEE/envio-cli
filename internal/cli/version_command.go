@@ -12,6 +12,8 @@ func newVersionCommand(lang i18n.Language, version, commit, date string) *cobra.
 	cmd := &cobra.Command{
 		Use:     "version",
 		Short:   versionShort(lang),
+		Long:    versionLong(lang),
+		Example: versionExample(lang),
 		GroupID: commandGroupAdditional,
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {

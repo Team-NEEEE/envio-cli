@@ -24,9 +24,11 @@ var newHistoryService = func(apiURL string) historyService {
 
 func newHistoryCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitCode *int) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "history [version]",
-		Short: historyShort(lang),
-		Args:  validateOptionalHistoryVersionArg(),
+		Use:     "history [version]",
+		Short:   historyShort(lang),
+		Long:    historyLong(lang),
+		Example: historyExample(lang),
+		Args:    validateOptionalHistoryVersionArg(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			version := ""
 			if len(args) == 1 {

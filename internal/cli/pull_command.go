@@ -27,9 +27,11 @@ type pullRunner struct {
 
 func newPullCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitCode *int) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "pull [env-file]",
-		Short: pullShort(lang),
-		Args:  validateOptionalEnvironmentFileArg(),
+		Use:     "pull [env-file]",
+		Short:   pullShort(lang),
+		Long:    pullLong(lang),
+		Example: pullExample(lang),
+		Args:    validateOptionalEnvironmentFileArg(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := ui.ModeAuto
 			if global.plain {
