@@ -6,7 +6,7 @@ import (
 
 const (
 	EnvAPIURL           = "ENVIO_API_URL"
-	DefaultAPIURL       = "http://localhost:8080"
+	DefaultAPIURL       = "http://env.io.kr"
 	GitHubAppInstallURL = "https://github.com/apps/envio-official/installations/new"
 )
 
