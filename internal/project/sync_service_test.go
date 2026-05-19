@@ -100,6 +100,16 @@ func TestSyncPushEncryptsEnvironmentAndSavesVersion(t *testing.T) {
 	if client.pushReq.GithubUserID != "octocat" || client.pushReq.ParentVersionID != 2 {
 		t.Fatalf("push request = %#v", client.pushReq)
 	}
+	if client.pushReq.EncryptedEnvironment["algorithm"] != envcrypto.EnvironmentValueEncryptionAlgorithm {
+		t.Fatalf("push encrypted algorithm = %#v", client.pushReq.EncryptedEnvironment["algorithm"])
+	}
+	variables, ok := client.pushReq.EncryptedEnvironment["variables"].(map[string]any)
+	if !ok {
+		t.Fatalf("push encrypted variables = %#v", client.pushReq.EncryptedEnvironment["variables"])
+	}
+	if _, ok := variables["API_KEY"]; !ok {
+		t.Fatalf("push encrypted variables should include plaintext key API_KEY: %#v", variables)
+	}
 	decrypted, err := envcrypto.DecryptEnvironment(client.pushReq.EncryptedEnvironment, testSyncMasterKey())
 	if err != nil {
 		t.Fatalf("DecryptEnvironment() error = %v", err)
@@ -147,9 +157,9 @@ func TestSyncPullUsesWrappedMasterKeyWhenReturned(t *testing.T) {
 
 	localMasterKey := []byte("12345678901234567890123456789012")
 	remoteMasterKey := []byte("abcdefghijklmnopqrstuvwxzy123456")
-	encrypted, err := envcrypto.EncryptEnvironment([]byte("API_KEY=remote\n"), remoteMasterKey)
+	encrypted, err := envcrypto.EncryptEnvironmentValues(map[string]string{"API_KEY": "remote"}, remoteMasterKey)
 	if err != nil {
-		t.Fatalf("EncryptEnvironment() error = %v", err)
+		t.Fatalf("EncryptEnvironmentValues() error = %v", err)
 	}
 	client := &fakeSyncAPI{pullResp: &projectapi.ProjectPullResponse{
 		EncryptedEnvironment: encrypted,

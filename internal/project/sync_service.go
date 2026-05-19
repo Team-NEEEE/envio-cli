@@ -113,7 +113,7 @@ type SyncService struct {
 	readFile           func(string) ([]byte, error)
 	writeFile          func(string, []byte, os.FileMode) error
 	parseEnvironment   func([]byte) (map[string]string, error)
-	encryptEnvironment func([]byte, []byte) (map[string]any, error)
+	encryptEnvironment func(map[string]string, []byte) (map[string]any, error)
 	decryptEnvironment func(map[string]any, []byte) ([]byte, error)
 	loadPrivateKey     func(int64) (string, error)
 	unwrapMasterKey    func(string, string) ([]byte, error)
@@ -200,7 +200,7 @@ func (s *SyncService) Push(
 	reporter.UpdateStep(command.StepUpdate{ID: StepReadEnvironmentFile, Status: command.StatusSuccess})
 
 	reporter.UpdateStep(command.StepUpdate{ID: StepEncryptEnvironment, Status: command.StatusRunning})
-	encrypted, err := s.encryptEnvironment(raw, local.masterKey)
+	encrypted, err := s.encryptEnvironment(values, local.masterKey)
 	if err != nil {
 		reporter.UpdateStep(command.StepUpdate{ID: StepEncryptEnvironment, Status: command.StatusError})
 		return nil, newSyncAppError(ErrorEncryptEnvironmentFailed, "environment encryption failed", err.Error(), 1)
@@ -343,7 +343,7 @@ func (s *SyncService) ensureDefaults() {
 		s.parseEnvironment = config.ParseDotenv
 	}
 	if s.encryptEnvironment == nil {
-		s.encryptEnvironment = envcrypto.EncryptEnvironment
+		s.encryptEnvironment = envcrypto.EncryptEnvironmentValues
 	}
 	if s.decryptEnvironment == nil {
 		s.decryptEnvironment = envcrypto.DecryptEnvironment
