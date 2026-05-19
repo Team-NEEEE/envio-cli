@@ -18,6 +18,10 @@ type historyService interface {
 	DecryptHistoryVersion(context.Context, string, string, command.Reporter) (*project.HistoryVersionResult, *command.AppError)
 }
 
+var newHistoryService = func(apiURL string) historyService {
+	return project.NewSyncService(apiURL)
+}
+
 func newHistoryCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitCode *int) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "history [version]",
@@ -46,7 +50,7 @@ func newHistoryCommand(rt Runtime, lang i18n.Language, global *globalOptions, ex
 			selectedMode := selectedHistoryMode(renderOptions, mode)
 			code := runHistoryCommand(
 				cmd.Context(),
-				project.NewSyncService(global.apiURL),
+				newHistoryService(global.apiURL),
 				rt.CWD,
 				version,
 				selectedMode,
@@ -93,29 +97,19 @@ func runHistoryCommand(
 	}
 
 	if strings.TrimSpace(version) == "" {
+		if selectedMode == ui.ModeTUI {
+			return runInteractiveHistory(ctx, service, cwd, options)
+		}
+
 		list, appErr := service.ListHistory(ctx, cwd, command.NoopReporter{})
 		if appErr != nil {
 			return ui.RenderAppError(appErr, options)
 		}
 		histories := historyEntryViews(list.Histories)
-		if selectedMode == ui.ModeTUI {
-			selection, err := ui.PromptHistorySelection(options.Input, options.Output, histories, options.Language)
-			if err != nil {
-				return ui.RenderAppError(command.NewAppError(
-					project.ErrorHistoryVersionNotFound,
-					"history version was not selected",
-					"Choose a version from the history list.",
-					1,
-					command.SeverityError,
-				), options)
-			}
-			version = selection
-		} else {
-			if selectedMode == ui.ModeJSON {
-				return ui.RenderHistoryListJSON(options.Output, histories)
-			}
-			return ui.RenderHistoryList(options.Output, histories, options.Language)
+		if selectedMode == ui.ModeJSON {
+			return ui.RenderHistoryListJSON(options.Output, histories)
 		}
+		return ui.RenderHistoryList(options.Output, histories, options.Language)
 	}
 
 	result, appErr := service.DecryptHistoryVersion(ctx, cwd, version, command.NoopReporter{})
@@ -127,6 +121,37 @@ func runHistoryCommand(
 		return ui.RenderHistoryVersionJSON(options.Output, view)
 	}
 	return ui.RenderHistoryVersion(options.Output, view, options.Language)
+}
+
+func runInteractiveHistory(ctx context.Context, service historyService, cwd string, options ui.Options) int {
+	prompts := ui.NewHistoryPromptSession(options.Input, options.Output, options.Language)
+	for {
+		list, appErr := service.ListHistory(ctx, cwd, command.NoopReporter{})
+		if appErr != nil {
+			return ui.RenderAppError(appErr, options)
+		}
+		selection, err := prompts.PromptSelection(historyEntryViews(list.Histories))
+		if err != nil {
+			return ui.RenderAppError(command.NewAppError(
+				project.ErrorHistoryVersionNotFound,
+				"history version was not selected",
+				"Choose a version from the history list.",
+				1,
+				command.SeverityError,
+			), options)
+		}
+
+		result, appErr := service.DecryptHistoryVersion(ctx, cwd, selection, command.NoopReporter{})
+		if appErr != nil {
+			return ui.RenderAppError(appErr, options)
+		}
+		_ = ui.RenderHistoryVersion(options.Output, historyVersionView(result), options.Language)
+
+		action, err := prompts.PromptAction()
+		if err != nil || action == ui.HistoryActionExit {
+			return 0
+		}
+	}
 }
 
 func selectedHistoryMode(options ui.Options, requested ui.RequestedMode) ui.RequestedMode {

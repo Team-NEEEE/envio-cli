@@ -32,6 +32,33 @@ type HistoryVersionView struct {
 	VariableCount int    `json:"variableCount"`
 }
 
+type HistoryAction string
+
+const (
+	HistoryActionBack HistoryAction = "back"
+	HistoryActionExit HistoryAction = "exit"
+)
+
+type HistoryPromptSession struct {
+	scanner *bufio.Scanner
+	output  io.Writer
+	lang    i18n.Language
+}
+
+func NewHistoryPromptSession(input io.Reader, output io.Writer, lang i18n.Language) *HistoryPromptSession {
+	if output == nil {
+		output = io.Discard
+	}
+	if input == nil {
+		return &HistoryPromptSession{output: output, lang: lang}
+	}
+	return &HistoryPromptSession{
+		scanner: bufio.NewScanner(input),
+		output:  output,
+		lang:    lang,
+	}
+}
+
 func RenderHistoryList(output io.Writer, histories []HistoryEntryView, lang i18n.Language) int {
 	if output == nil {
 		output = io.Discard
@@ -42,6 +69,15 @@ func RenderHistoryList(output io.Writer, histories []HistoryEntryView, lang i18n
 		_, _ = fmt.Fprintln(output, historyEmptyText(lang))
 		return 0
 	}
+	_, _ = fmt.Fprintf(
+		output,
+		"  %-3s %-8s %-16s %-16s %s\n",
+		historyNumberHeader(lang),
+		historyVersionHeader(lang),
+		historyCreatedAtHeader(lang),
+		historyAuthorHeader(lang),
+		historyStatusHeader(lang),
+	)
 	for index, history := range histories {
 		latest := ""
 		if history.Latest {
@@ -49,7 +85,7 @@ func RenderHistoryList(output io.Writer, histories []HistoryEntryView, lang i18n
 		}
 		_, _ = fmt.Fprintf(
 			output,
-			"  %d. %-4s %-16s %-10s %s\n",
+			"  %-3d %-8s %-16s %-16s %s\n",
 			index+1,
 			historyVersionLabel(history.VersionID),
 			shortHistoryTimestamp(history.CreatedAt),
@@ -117,38 +153,144 @@ func RenderHistoryVersionJSON(output io.Writer, history HistoryVersionView) int 
 }
 
 func PromptHistorySelection(input io.Reader, output io.Writer, histories []HistoryEntryView, lang i18n.Language) (string, error) {
-	RenderHistoryList(output, histories, lang)
+	return NewHistoryPromptSession(input, output, lang).PromptSelection(histories)
+}
+
+func (p *HistoryPromptSession) PromptSelection(histories []HistoryEntryView) (string, error) {
+	if p == nil {
+		return "", io.EOF
+	}
+	RenderHistoryList(p.output, histories, p.lang)
 	if len(histories) == 0 {
 		return "", io.EOF
 	}
-	if input == nil {
+	if p.scanner == nil {
 		return "", io.EOF
 	}
-	if output == nil {
-		output = io.Discard
-	}
-	_, _ = fmt.Fprintln(output)
-	_, _ = fmt.Fprint(output, "> ")
+	_, _ = fmt.Fprintln(p.output)
+	_, _ = fmt.Fprint(p.output, historySelectionInputPrompt(p.lang))
 
-	scanner := bufio.NewScanner(input)
-	if !scanner.Scan() {
-		if err := scanner.Err(); err != nil {
+	if !p.scanner.Scan() {
+		if err := p.scanner.Err(); err != nil {
 			return "", err
 		}
 		return "", io.EOF
 	}
-	choice := strings.TrimSpace(scanner.Text())
+	choice := strings.TrimSpace(p.scanner.Text())
 	if index, err := strconv.Atoi(choice); err == nil && index >= 1 && index <= len(histories) {
 		return historyVersionLabel(histories[index-1].VersionID), nil
 	}
 	return choice, nil
 }
 
+func PromptHistoryAction(input io.Reader, output io.Writer, lang i18n.Language) (HistoryAction, error) {
+	return NewHistoryPromptSession(input, output, lang).PromptAction()
+}
+
+func (p *HistoryPromptSession) PromptAction() (HistoryAction, error) {
+	if p == nil || p.scanner == nil {
+		return HistoryActionExit, io.EOF
+	}
+	for {
+		_, _ = fmt.Fprintln(p.output)
+		_, _ = fmt.Fprintln(p.output, historyActionPrompt(p.lang))
+		_, _ = fmt.Fprintf(p.output, "  1. %s\n", historyBackActionLabel(p.lang))
+		_, _ = fmt.Fprintf(p.output, "  2. %s\n", historyExitActionLabel(p.lang))
+		_, _ = fmt.Fprintln(p.output)
+		_, _ = fmt.Fprint(p.output, historySelectionInputPrompt(p.lang))
+
+		if !p.scanner.Scan() {
+			if err := p.scanner.Err(); err != nil {
+				return HistoryActionExit, err
+			}
+			return HistoryActionExit, io.EOF
+		}
+		switch normalizeHistoryActionChoice(p.scanner.Text()) {
+		case "1", "back", "b":
+			return HistoryActionBack, nil
+		case "2", "exit", "quit", "q":
+			return HistoryActionExit, nil
+		default:
+			_, _ = fmt.Fprintln(p.output, historyInvalidActionText(p.lang))
+		}
+	}
+}
+
 func historySelectionPrompt(lang i18n.Language) string {
 	if lang == i18n.Korean {
-		return "? 확인할 버전을 선택하세요."
+		return "? 확인할 버전을 선택하세요. 번호 또는 버전(v3)을 입력한 뒤 Enter를 누르세요."
 	}
-	return "? Select a version to inspect."
+	return "? Select a version to inspect. Type a number or version (for example, 1 or v3), then press Enter."
+}
+
+func historySelectionInputPrompt(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "선택: "
+	}
+	return "Selection: "
+}
+
+func historyActionPrompt(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "? 작업을 선택하세요."
+	}
+	return "? Choose the next action."
+}
+
+func historyBackActionLabel(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "버전 목록으로 돌아가기"
+	}
+	return "Back to version list"
+}
+
+func historyExitActionLabel(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "종료"
+	}
+	return "Exit"
+}
+
+func historyInvalidActionText(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "1 또는 2를 입력해 주세요."
+	}
+	return "Enter 1 or 2."
+}
+
+func historyNumberHeader(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "번호"
+	}
+	return "No"
+}
+
+func historyVersionHeader(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "버전"
+	}
+	return "Version"
+}
+
+func historyCreatedAtHeader(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "생성 시각"
+	}
+	return "Created"
+}
+
+func historyAuthorHeader(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "작성자"
+	}
+	return "Author"
+}
+
+func historyStatusHeader(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "상태"
+	}
+	return "Status"
 }
 
 func historyEmptyText(lang i18n.Language) string {
@@ -195,8 +337,13 @@ func historyVersionLabelOrDash(versionID int64) string {
 
 func shortHistoryTimestamp(value string) string {
 	value = strings.TrimSpace(value)
+	value = strings.Replace(value, "T", " ", 1)
 	if len(value) >= len("2006-01-02 15:04") {
 		return value[:len("2006-01-02 15:04")]
 	}
 	return value
+}
+
+func normalizeHistoryActionChoice(choice string) string {
+	return strings.ToLower(strings.TrimSpace(choice))
 }

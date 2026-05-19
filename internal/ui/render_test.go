@@ -68,6 +68,47 @@ func TestRenderErrorUsesCommonMessageShape(t *testing.T) {
 	}
 }
 
+func TestRenderHistoryListShowsSelectionGuidance(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	RenderHistoryList(&out, []HistoryEntryView{
+		{
+			GithubID:  "octocat",
+			CreatedAt: "2026-05-19T14:02:51",
+			VersionID: 3,
+			Latest:    true,
+		},
+	}, "en")
+
+	got := out.String()
+	if !strings.Contains(got, "Type a number or version") ||
+		!strings.Contains(got, "No  Version") ||
+		!strings.Contains(got, "2026-05-19 14:02") ||
+		strings.Contains(got, "2026-05-19T14:02") {
+		t.Fatalf("history list output = %s", got)
+	}
+}
+
+func TestHistoryPromptSessionCanReturnToListAction(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	session := NewHistoryPromptSession(strings.NewReader("1\n"), &out, "en")
+
+	action, err := session.PromptAction()
+	if err != nil {
+		t.Fatalf("PromptAction() error = %v", err)
+	}
+	if action != HistoryActionBack {
+		t.Fatalf("action = %s, want %s", action, HistoryActionBack)
+	}
+	if !strings.Contains(out.String(), "Back to version list") ||
+		!strings.Contains(out.String(), "Exit") {
+		t.Fatalf("action prompt output = %s", out.String())
+	}
+}
+
 func TestTUIErrorShowsOnlyHint(t *testing.T) {
 	t.Parallel()
 
