@@ -115,12 +115,14 @@ type SyncService struct {
 	parseEnvironment   func([]byte) (map[string]string, error)
 	encryptEnvironment func([]byte, []byte) (map[string]any, error)
 	decryptEnvironment func(map[string]any, []byte) ([]byte, error)
+	loadPrivateKey     func(int64) (string, error)
+	unwrapMasterKey    func(string, string) ([]byte, error)
 	loadLocalContext   func(context.Context, string) (localProjectContext, *command.AppError)
 	saveLocalVersion   func(localProjectContext, int64) error
 }
 
 type syncAPI interface {
-	PullLatest(context.Context, int64, string, string) (*projectapi.ProjectPullResponse, error)
+	PullLatest(context.Context, int64, string, int64, string) (*projectapi.ProjectPullResponse, error)
 	Push(context.Context, int64, projectapi.ProjectPushRequest, string) (*projectapi.ProjectPushResponse, error)
 	History(context.Context, int64, string) (*projectapi.ProjectHistoryResponse, error)
 }
@@ -270,7 +272,7 @@ func (s *SyncService) Pull(
 		reporter.UpdateStep(command.StepUpdate{ID: StepPullEnvironment, Status: command.StatusError})
 		return nil, appErr
 	}
-	response, err := s.client.PullLatest(ctx, local.projectID, local.githubUserID, "")
+	response, err := s.client.PullLatest(ctx, local.projectID, local.githubUserID, local.deviceID, "")
 	if err != nil {
 		reporter.UpdateStep(command.StepUpdate{ID: StepPullEnvironment, Status: command.StatusError})
 		return nil, syncAppErrorFromAPI(ErrorPullEnvironmentFailed, "pull environment request failed", err)
@@ -282,7 +284,12 @@ func (s *SyncService) Pull(
 	reporter.UpdateStep(command.StepUpdate{ID: StepPullEnvironment, Status: command.StatusSuccess})
 
 	reporter.UpdateStep(command.StepUpdate{ID: StepDecryptEnvironment, Status: command.StatusRunning})
-	raw, err := s.decryptEnvironment(response.EncryptedEnvironment, local.masterKey)
+	masterKey, appErr := s.pullMasterKey(local, response)
+	if appErr != nil {
+		reporter.UpdateStep(command.StepUpdate{ID: StepDecryptEnvironment, Status: command.StatusError})
+		return nil, appErr
+	}
+	raw, err := s.decryptEnvironment(response.EncryptedEnvironment, masterKey)
 	if err != nil {
 		reporter.UpdateStep(command.StepUpdate{ID: StepDecryptEnvironment, Status: command.StatusError})
 		return nil, newSyncAppError(ErrorDecryptEnvironmentFailed, "environment decryption failed", err.Error(), 1)
@@ -340,6 +347,12 @@ func (s *SyncService) ensureDefaults() {
 	}
 	if s.decryptEnvironment == nil {
 		s.decryptEnvironment = envcrypto.DecryptEnvironment
+	}
+	if s.loadPrivateKey == nil {
+		s.loadPrivateKey = envcrypto.LoadDevicePrivateKey
+	}
+	if s.unwrapMasterKey == nil {
+		s.unwrapMasterKey = envcrypto.UnwrapProjectMasterKey
 	}
 	if s.loadLocalContext == nil {
 		s.loadLocalContext = s.loadDefaultLocalContext
@@ -524,6 +537,32 @@ func validateRepositoryMatches(originURL, configuredURL string) *command.AppErro
 		)
 	}
 	return nil
+}
+
+func (s *SyncService) pullMasterKey(local localProjectContext, response *projectapi.ProjectPullResponse) ([]byte, *command.AppError) {
+	wrappedMasterKey := ""
+	if response != nil {
+		wrappedMasterKey = strings.TrimSpace(response.WrappedMasterKey)
+	}
+	if wrappedMasterKey == "" {
+		return local.masterKey, nil
+	}
+
+	privateKey, err := s.loadPrivateKey(local.deviceID)
+	if err != nil {
+		return nil, newSyncAppError(
+			ErrorUserDeviceKeyNotRegistered,
+			"current device private key could not be loaded",
+			"Run `envio login` again to register this device key.",
+			1,
+		)
+	}
+
+	masterKey, err := s.unwrapMasterKey(privateKey, wrappedMasterKey)
+	if err != nil {
+		return nil, newSyncAppError(ErrorUnwrapProjectKeyFailed, "unwrap project master key failed", err.Error(), 1)
+	}
+	return masterKey, nil
 }
 
 func loadLocalLinkConfig(repositoryRoot string) (LocalLinkConfig, error) {

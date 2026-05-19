@@ -34,6 +34,7 @@ func (f *fakeSyncAPI) PullLatest(
 	_ context.Context,
 	projectID int64,
 	githubUserID string,
+	deviceID int64,
 	authorization string,
 ) (*projectapi.ProjectPullResponse, error) {
 	f.pullCalls++
@@ -41,6 +42,9 @@ func (f *fakeSyncAPI) PullLatest(
 	f.auth = authorization
 	if githubUserID != "octocat" {
 		return nil, errors.New("unexpected github user")
+	}
+	if deviceID != 20 {
+		return nil, errors.New("unexpected device")
 	}
 	return f.pullResp, f.pullErr
 }
@@ -135,6 +139,56 @@ func TestSyncPullDecryptsEnvironmentWritesFileAndSavesVersion(t *testing.T) {
 		saved.perm != 0600 ||
 		saved.versionID != 3 {
 		t.Fatalf("saved = %#v", saved)
+	}
+}
+
+func TestSyncPullUsesWrappedMasterKeyWhenReturned(t *testing.T) {
+	t.Parallel()
+
+	localMasterKey := []byte("12345678901234567890123456789012")
+	remoteMasterKey := []byte("abcdefghijklmnopqrstuvwxzy123456")
+	encrypted, err := envcrypto.EncryptEnvironment([]byte("API_KEY=remote\n"), remoteMasterKey)
+	if err != nil {
+		t.Fatalf("EncryptEnvironment() error = %v", err)
+	}
+	client := &fakeSyncAPI{pullResp: &projectapi.ProjectPullResponse{
+		EncryptedEnvironment: encrypted,
+		WrappedMasterKey:     "wrapped-key",
+		ProjectID:            1,
+		HistoryID:            11,
+		VersionID:            3,
+	}}
+	service, saved := newTestSyncService(client)
+	service.loadLocalContext = func(context.Context, string) (localProjectContext, *command.AppError) {
+		return localProjectContext{
+			repositoryRoot: "C:/repo",
+			githubUserID:   "octocat",
+			masterKey:      localMasterKey,
+			source:         localProjectSourceSession,
+			projectID:      1,
+			deviceID:       20,
+			versionID:      2,
+		}, nil
+	}
+	service.loadPrivateKey = func(deviceID int64) (string, error) {
+		if deviceID != 20 {
+			t.Fatalf("deviceID = %d, want 20", deviceID)
+		}
+		return "private-key", nil
+	}
+	service.unwrapMasterKey = func(privateKey string, wrappedMasterKey string) ([]byte, error) {
+		if privateKey != "private-key" || wrappedMasterKey != "wrapped-key" {
+			t.Fatalf("unwrap args = %q, %q", privateKey, wrappedMasterKey)
+		}
+		return remoteMasterKey, nil
+	}
+
+	got, appErr := service.Pull(context.Background(), "C:/repo", "", command.NoopReporter{})
+	if appErr != nil {
+		t.Fatalf("Pull() appErr = %v", appErr)
+	}
+	if got.VariableCount != 1 || string(saved.raw) != "API_KEY=remote\n" {
+		t.Fatalf("Pull() = %#v, saved = %#v", got, saved)
 	}
 }
 
