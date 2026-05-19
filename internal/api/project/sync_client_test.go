@@ -22,6 +22,9 @@ func TestClientPullLatestSendsProjectAndGithubUserID(t *testing.T) {
 		if got := request.URL.Query().Get("githubUserId"); got != "octocat" {
 			t.Fatalf("githubUserId = %q", got)
 		}
+		if got := request.URL.Query().Get("deviceId"); got != "20" {
+			t.Fatalf("deviceId = %q", got)
+		}
 		if got := request.Header.Get("Authorization"); got != "Bearer token-1" {
 			t.Fatalf("Authorization = %q", got)
 		}
@@ -40,6 +43,7 @@ func TestClientPullLatestSendsProjectAndGithubUserID(t *testing.T) {
 					"nonce": "nonce",
 					"ciphertext": "ciphertext"
 				},
+				"wrappedMasterKey": "wrapped-key",
 				"createdAt": "2026-05-12T01:01:17",
 				"updatedAt": "2026-05-12T01:02:17"
 			},
@@ -56,7 +60,7 @@ func TestClientPullLatestSendsProjectAndGithubUserID(t *testing.T) {
 		t.Fatalf("NewHTTPClient() error = %v", err)
 	}
 
-	got, err := client.PullLatest(context.Background(), 1, "octocat", "Bearer token-1")
+	got, err := client.PullLatest(context.Background(), 1, "octocat", 20, "Bearer token-1")
 	if err != nil {
 		t.Fatalf("PullLatest() error = %v", err)
 	}
@@ -65,6 +69,9 @@ func TestClientPullLatestSendsProjectAndGithubUserID(t *testing.T) {
 	}
 	if got.EncryptedEnvironment["ciphertext"] != "ciphertext" {
 		t.Fatalf("encryptedEnvironment = %#v", got.EncryptedEnvironment)
+	}
+	if got.WrappedMasterKey != "wrapped-key" {
+		t.Fatalf("wrappedMasterKey = %q", got.WrappedMasterKey)
 	}
 }
 

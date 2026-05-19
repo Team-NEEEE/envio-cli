@@ -19,6 +19,7 @@ func (c *Client) PullLatest(
 	ctx context.Context,
 	projectID int64,
 	githubUserID string,
+	deviceID int64,
 	authorization string,
 ) (*ProjectPullResponse, error) {
 	if projectID <= 0 {
@@ -31,6 +32,9 @@ func (c *Client) PullLatest(
 
 	query := url.Values{}
 	query.Set("githubUserId", githubUserID)
+	if deviceID > 0 {
+		query.Set("deviceId", fmt.Sprintf("%d", deviceID))
+	}
 
 	response, err := c.client.Do(ctx, api.Request{
 		Method: http.MethodPost,

@@ -19,6 +19,7 @@ type ProjectPullResponse struct {
 	EncryptedEnvironment map[string]any `json:"encryptedEnvironment"`
 	Message              string         `json:"message"`
 	EnvName              string         `json:"envName"`
+	WrappedMasterKey     string         `json:"wrappedMasterKey"`
 	CreatedAt            string         `json:"createdAt,omitempty"`
 	UpdatedAt            string         `json:"updatedAt,omitempty"`
 	HistoryID            int64          `json:"historyId"`
