@@ -110,11 +110,6 @@ func (s *LoginService) Login(ctx context.Context, deviceName string) (*RegisterK
 		return nil, err
 	}
 
-	// 비밀키 저장
-	if err := envcrypto.SavePrivateKey(privatePEM); err != nil {
-		return nil, fmt.Errorf("private key 저장 실패: %w", err)
-	}
-
 	// 서버에 공개키와 device 저장
 	resp, err := s.registerKey(ctx, RegisterKeyRequest{
 		LoginSessionID: startResp.LoginSessionID,
