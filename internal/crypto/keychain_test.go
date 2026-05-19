@@ -7,32 +7,49 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-// TestSaveAndLoadPrivateKey 개인키 저장 후 로드 동작을 검증한다.
-func TestSaveAndLoadPrivateKey(t *testing.T) {
-	// 실제 OS keychain을 건드리지 않도록 go-keyring mock provider를 사용한다.
-	keyring.MockInit()
-
-	const privateKeyPEM = "private-key-pem"
-
-	if err := SavePrivateKey(privateKeyPEM); err != nil {
-		t.Fatalf("SavePrivateKey() error = %v", err)
-	}
-
-	got, err := LoadPrivateKey()
-	if err != nil {
-		t.Fatalf("LoadPrivateKey() error = %v", err)
-	}
-	if got != privateKeyPEM {
-		t.Fatalf("LoadPrivateKey() = %q", got)
-	}
-}
-
 func TestSaveAndLoadDevicePrivateKey(t *testing.T) {
 	keyring.MockInit()
 
 	const privateKeyPEM = "private-key-pem"
 	if err := SaveDevicePrivateKey(20, privateKeyPEM); err != nil {
 		t.Fatalf("SaveDevicePrivateKey() error = %v", err)
+	}
+
+	got, err := LoadDevicePrivateKey(20)
+	if err != nil {
+		t.Fatalf("LoadDevicePrivateKey() error = %v", err)
+	}
+	if got != privateKeyPEM {
+		t.Fatalf("LoadDevicePrivateKey() = %q", got)
+	}
+	if _, err := keyring.Get(serviceName, "device-private-key"); !errors.Is(err, keyring.ErrNotFound) {
+		t.Fatalf("legacy private key = %v, want ErrNotFound", err)
+	}
+}
+
+func TestLoadDevicePrivateKeyFallsBackToLegacyKey(t *testing.T) {
+	keyring.MockInit()
+
+	const privateKeyPEM = "legacy-private-key-pem"
+	if err := keyring.Set(serviceName, "device-private-key", privateKeyPEM); err != nil {
+		t.Fatalf("keyring.Set() error = %v", err)
+	}
+
+	got, err := LoadDevicePrivateKey(20)
+	if err != nil {
+		t.Fatalf("LoadDevicePrivateKey() error = %v", err)
+	}
+	if got != privateKeyPEM {
+		t.Fatalf("LoadDevicePrivateKey() = %q", got)
+	}
+}
+
+func TestLoadDevicePrivateKeyFallsBackToLegacyService(t *testing.T) {
+	keyring.MockInit()
+
+	const privateKeyPEM = "legacy-service-private-key-pem"
+	if err := keyring.Set(legacyServiceName, "device-private-key", privateKeyPEM); err != nil {
+		t.Fatalf("keyring.Set() error = %v", err)
 	}
 
 	got, err := LoadDevicePrivateKey(20)
@@ -87,17 +104,11 @@ func TestKeychainErrors(t *testing.T) {
 	// mock provider가 항상 오류를 반환하도록 설정한다.
 	keyring.MockInitWithError(wantErr)
 
-	if err := SavePrivateKey("private-key-pem"); !errors.Is(err, wantErr) {
-		t.Fatalf("SavePrivateKey() error = %v, want %v", err, wantErr)
-	}
 	if err := SaveDevicePrivateKey(20, "private-key-pem"); !errors.Is(err, wantErr) {
 		t.Fatalf("SaveDevicePrivateKey() error = %v, want %v", err, wantErr)
 	}
 	if err := SavePublicKey("public-key-pem"); !errors.Is(err, wantErr) {
 		t.Fatalf("SavePublicKey() error = %v, want %v", err, wantErr)
-	}
-	if _, err := LoadPrivateKey(); !errors.Is(err, wantErr) {
-		t.Fatalf("LoadPrivateKey() error = %v, want %v", err, wantErr)
 	}
 	if _, err := LoadDevicePrivateKey(20); !errors.Is(err, wantErr) {
 		t.Fatalf("LoadDevicePrivateKey() error = %v, want %v", err, wantErr)

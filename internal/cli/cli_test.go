@@ -68,6 +68,152 @@ func TestRunHelpSupportsKoreanWhenRequested(t *testing.T) {
 	}
 }
 
+func TestRunCommandHelpIncludesTroubleshootingGuidance(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{
+			name: "login",
+			args: []string{"login", "--help"},
+			want: []string{
+				"USAGE",
+				"envio login [flags]",
+				"already logged in",
+				"OAuth session expires",
+				"envio login --device-name work-laptop",
+			},
+		},
+		{
+			name: "create",
+			args: []string{"create", "--help"},
+			want: []string{
+				"USAGE",
+				"envio create <repository-url> [flags]",
+				"Requirements:",
+				"already exists",
+				"Envio GitHub App installation",
+				"envio create --repo https://github.com/owner/repo",
+			},
+		},
+		{
+			name: "link",
+			args: []string{"link", "--help"},
+			want: []string{
+				"USAGE",
+				"envio link [repository-url] [flags]",
+				"join approval is pending",
+				"device key or public key errors",
+				"envio link https://github.com/owner/repo",
+			},
+		},
+		{
+			name: "push",
+			args: []string{"push", "--help"},
+			want: []string{
+				"USAGE",
+				"envio push [env-file] [flags]",
+				"Only when env-file is omitted",
+				"current working directory",
+				"environment file does not exist",
+				"version conflict occurs",
+				"envio push .env.local",
+			},
+		},
+		{
+			name: "pull",
+			args: []string{"pull", "--help"},
+			want: []string{
+				"USAGE",
+				"envio pull [env-file] [flags]",
+				"Only when env-file is omitted",
+				"current working directory",
+				"no environment version exists",
+				"project key cannot be loaded",
+				"envio pull .env.local",
+			},
+		},
+		{
+			name: "history",
+			args: []string{"history", "--help"},
+			want: []string{
+				"USAGE",
+				"envio history [version] [flags]",
+				"interactive list",
+				"selected version is missing",
+				"envio history v3",
+			},
+		},
+		{
+			name: "version",
+			args: []string{"version", "--help"},
+			want: []string{
+				"USAGE",
+				"envio version [flags]",
+				"release metadata",
+				"envio version",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var out bytes.Buffer
+			var errOut bytes.Buffer
+			code := Run(context.Background(), Runtime{
+				Args:   tt.args,
+				Stdout: &out,
+				Stderr: &errOut,
+				CWD:    t.TempDir(),
+			})
+			if code != 0 {
+				t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+			}
+			got := out.String()
+			for _, want := range tt.want {
+				if !strings.Contains(got, want) {
+					t.Fatalf("%s help missing %q:\n%s", tt.name, want, got)
+				}
+			}
+		})
+	}
+}
+
+func TestRunCommandHelpSupportsKoreanTroubleshootingGuidance(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:   []string{"--lang", "ko", "push", "--help"},
+		Stdout: &out,
+		Stderr: &errOut,
+		CWD:    t.TempDir(),
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	for _, want := range []string{
+		"사용법",
+		"필요 조건:",
+		"주의사항:",
+		"env-file을 생략할 때만",
+		"문제가 있을 때:",
+		"버전 충돌",
+		"envio pull",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("Korean help missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
 func TestRunWithoutCommandShowsHelp(t *testing.T) {
 	t.Parallel()
 

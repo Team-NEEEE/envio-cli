@@ -32,9 +32,11 @@ type createRunner struct {
 func newCreateCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitCode *int) *cobra.Command {
 	options := createOptions{}
 	cmd := &cobra.Command{
-		Use:   "create <repository-url>",
-		Short: createShort(lang),
-		Args:  validateCreateArgs(&options),
+		Use:     "create <repository-url>",
+		Short:   createShort(lang),
+		Long:    createLong(lang),
+		Example: createExample(lang),
+		Args:    validateCreateArgs(&options),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := ui.ModeAuto
 			if global.plain {

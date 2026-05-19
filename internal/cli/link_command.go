@@ -27,9 +27,11 @@ type linkRunner struct {
 
 func newLinkCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitCode *int) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "link [repository-url]",
-		Short: linkShort(lang),
-		Args:  validateLinkArgs(),
+		Use:     "link [repository-url]",
+		Short:   linkShort(lang),
+		Long:    linkLong(lang),
+		Example: linkExample(lang),
+		Args:    validateLinkArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := ui.ModeAuto
 			if global.plain {

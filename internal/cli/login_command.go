@@ -30,9 +30,11 @@ type loginRunner struct {
 func newLoginCommand(rt Runtime, lang i18n.Language, global *globalOptions, exitCode *int) *cobra.Command {
 	options := loginOptions{}
 	cmd := &cobra.Command{
-		Use:   "login",
-		Short: loginShort(lang),
-		Args:  cobra.NoArgs,
+		Use:     "login",
+		Short:   loginShort(lang),
+		Long:    loginLong(lang),
+		Example: loginExample(lang),
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			mode := ui.ModeAuto
 			if global.plain {
