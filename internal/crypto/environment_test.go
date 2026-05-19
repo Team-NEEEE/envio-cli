@@ -54,7 +54,7 @@ func TestEncryptEnvironmentValuesLeavesKeysPlainAndEncryptsValues(t *testing.T) 
 
 	masterKey := []byte("12345678901234567890123456789012")
 	encrypted, err := EncryptEnvironmentValues(map[string]string{
-		"DATABASE_URL": "postgres://user:pass@example/db",
+		"DATABASE_URL": "postgres://example.invalid/db",
 		"API_KEY":      "secret",
 	}, masterKey)
 	if err != nil {
@@ -76,7 +76,7 @@ func TestEncryptEnvironmentValuesLeavesKeysPlainAndEncryptsValues(t *testing.T) 
 		t.Fatalf("Marshal() error = %v", err)
 	}
 	if strings.Contains(string(rawJSON), "secret") ||
-		strings.Contains(string(rawJSON), "postgres://user:pass@example/db") {
+		strings.Contains(string(rawJSON), "postgres://example.invalid/db") {
 		t.Fatalf("encrypted environment leaked plaintext values: %s", string(rawJSON))
 	}
 
@@ -84,7 +84,7 @@ func TestEncryptEnvironmentValuesLeavesKeysPlainAndEncryptsValues(t *testing.T) 
 	if err != nil {
 		t.Fatalf("DecryptEnvironment() error = %v", err)
 	}
-	want := []byte("API_KEY=secret\nDATABASE_URL=postgres://user:pass@example/db\n")
+	want := []byte("API_KEY=secret\nDATABASE_URL=postgres://example.invalid/db\n")
 	if !bytes.Equal(got, want) {
 		t.Fatalf("decrypted = %q, want %q", got, want)
 	}
@@ -98,7 +98,10 @@ func TestDecryptEnvironmentValuesBindsCiphertextToKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncryptEnvironmentValues() error = %v", err)
 	}
-	variables := encrypted["variables"].(map[string]any)
+	variables, ok := encrypted["variables"].(map[string]any)
+	if !ok {
+		t.Fatalf("variables = %#v", encrypted["variables"])
+	}
 	variables["OTHER_KEY"] = variables["API_KEY"]
 	delete(variables, "API_KEY")
 
