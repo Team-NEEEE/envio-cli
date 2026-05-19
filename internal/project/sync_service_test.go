@@ -16,15 +16,18 @@ import (
 )
 
 type fakeSyncAPI struct {
-	pullErr   error
-	pushErr   error
-	pullResp  *projectapi.ProjectPullResponse
-	pushResp  *projectapi.ProjectPushResponse
-	auth      string
-	pushReq   projectapi.ProjectPushRequest
-	projectID int64
-	pullCalls int
-	pushCalls int
+	pullErr      error
+	pushErr      error
+	historyErr   error
+	pullResp     *projectapi.ProjectPullResponse
+	pushResp     *projectapi.ProjectPushResponse
+	historyResp  *projectapi.ProjectHistoryResponse
+	auth         string
+	pushReq      projectapi.ProjectPushRequest
+	projectID    int64
+	pullCalls    int
+	pushCalls    int
+	historyCalls int
 }
 
 func (f *fakeSyncAPI) PullLatest(
@@ -53,6 +56,17 @@ func (f *fakeSyncAPI) Push(
 	f.pushReq = req
 	f.auth = authorization
 	return f.pushResp, f.pushErr
+}
+
+func (f *fakeSyncAPI) History(
+	_ context.Context,
+	projectID int64,
+	authorization string,
+) (*projectapi.ProjectHistoryResponse, error) {
+	f.historyCalls++
+	f.projectID = projectID
+	f.auth = authorization
+	return f.historyResp, f.historyErr
 }
 
 func TestSyncPushEncryptsEnvironmentAndSavesVersion(t *testing.T) {
@@ -121,6 +135,81 @@ func TestSyncPullDecryptsEnvironmentWritesFileAndSavesVersion(t *testing.T) {
 		saved.perm != 0600 ||
 		saved.versionID != 3 {
 		t.Fatalf("saved = %#v", saved)
+	}
+}
+
+func TestSyncHistoryListsMetadataWithoutDecrypting(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeSyncAPI{historyResp: &projectapi.ProjectHistoryResponse{
+		Histories: []projectapi.ProjectHistoryEntry{
+			{
+				HistoryID:            11,
+				ProjectID:            1,
+				VersionID:            8,
+				BaseVersionID:        7,
+				GithubID:             "octocat",
+				CreatedAt:            "2026-04-20 11:00:00",
+				EncryptedEnvironment: map[string]any{"ciphertext": "ciphertext"},
+			},
+			{
+				HistoryID: 10,
+				ProjectID: 1,
+				VersionID: 7,
+				GithubID:  "dev1",
+				CreatedAt: "2026-04-19 10:00:00",
+			},
+		},
+	}}
+	service, _ := newTestSyncService(client)
+	service.decryptEnvironment = func(map[string]any, []byte) ([]byte, error) {
+		t.Fatal("ListHistory must not decrypt environments")
+		return nil, nil
+	}
+
+	got, appErr := service.ListHistory(context.Background(), "C:/repo", command.NoopReporter{})
+	if appErr != nil {
+		t.Fatalf("ListHistory() appErr = %v", appErr)
+	}
+	if client.historyCalls != 1 || got.ProjectID != 1 || len(got.Histories) != 2 {
+		t.Fatalf("history result = %#v, client = %#v", got, client)
+	}
+	if !got.Histories[0].Latest || got.Histories[0].VersionID != 8 || got.Histories[0].BaseVersionID != 7 {
+		t.Fatalf("history latest normalization = %#v", got.Histories[0])
+	}
+}
+
+func TestSyncHistoryDecryptsSelectedVersion(t *testing.T) {
+	t.Parallel()
+
+	encrypted, err := envcrypto.EncryptEnvironment([]byte("API_KEY=secret\n"), testSyncMasterKey())
+	if err != nil {
+		t.Fatalf("EncryptEnvironment() error = %v", err)
+	}
+	client := &fakeSyncAPI{historyResp: &projectapi.ProjectHistoryResponse{
+		Histories: []projectapi.ProjectHistoryEntry{
+			{
+				HistoryID:            11,
+				ProjectID:            1,
+				VersionID:            8,
+				BaseVersionID:        7,
+				GithubID:             "octocat",
+				CreatedAt:            "2026-04-20 11:00:00",
+				EncryptedEnvironment: encrypted,
+			},
+		},
+	}}
+	service, _ := newTestSyncService(client)
+
+	got, appErr := service.DecryptHistoryVersion(context.Background(), "C:/repo", "v8", command.NoopReporter{})
+	if appErr != nil {
+		t.Fatalf("DecryptHistoryVersion() appErr = %v", appErr)
+	}
+	if got.VersionID != 8 || got.BaseVersionID != 7 || got.VariableCount != 1 {
+		t.Fatalf("DecryptHistoryVersion() = %#v", got)
+	}
+	if got.Environment != "API_KEY=secret\n" {
+		t.Fatalf("environment = %q", got.Environment)
 	}
 }
 

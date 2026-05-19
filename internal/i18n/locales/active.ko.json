@@ -169,6 +169,16 @@
     "PULL_ENVIRONMENT_FAILED": {
       "message": "환경변수 다운로드에 실패했습니다."
     },
+    "HISTORY_FAILED": {
+      "message": "환경변수 이력 조회에 실패했습니다."
+    },
+    "HISTORY_RESPONSE_INVALID": {
+      "message": "환경변수 이력 응답이 올바르지 않습니다."
+    },
+    "HISTORY_VERSION_NOT_FOUND": {
+      "message": "환경변수 이력 버전을 찾을 수 없습니다.",
+      "hint": "`envio history`에서 표시된 버전을 선택해 주세요."
+    },
     "PULL_RESPONSE_INVALID": {
       "message": "환경변수 다운로드 응답이 올바르지 않습니다."
     },
@@ -289,6 +299,9 @@
     },
     "pull-environment": {
       "label": "환경변수 다운로드"
+    },
+    "list-history": {
+      "label": "이력 조회"
     },
     "decrypt-environment": {
       "label": "환경변수 복호화"

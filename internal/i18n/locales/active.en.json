@@ -169,6 +169,16 @@
     "PULL_ENVIRONMENT_FAILED": {
       "message": "Environment pull failed."
     },
+    "HISTORY_FAILED": {
+      "message": "Environment history lookup failed."
+    },
+    "HISTORY_RESPONSE_INVALID": {
+      "message": "Environment history response is invalid."
+    },
+    "HISTORY_VERSION_NOT_FOUND": {
+      "message": "Environment history version was not found.",
+      "hint": "Choose a version from `envio history`."
+    },
     "PULL_RESPONSE_INVALID": {
       "message": "Environment pull response is invalid."
     },
@@ -289,6 +299,9 @@
     },
     "pull-environment": {
       "label": "Pull environment"
+    },
+    "list-history": {
+      "label": "List history"
     },
     "decrypt-environment": {
       "label": "Decrypt environment"

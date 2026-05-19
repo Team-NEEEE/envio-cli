@@ -81,6 +81,13 @@ func pullShort(lang i18n.Language) string {
 	return "Download and decrypt the latest environment file."
 }
 
+func historyShort(lang i18n.Language) string {
+	if lang == i18n.Korean {
+		return "서버에 저장된 환경변수 버전 이력을 조회합니다."
+	}
+	return "Inspect environment version history."
+}
+
 func koreanFlagText(name string) string {
 	switch name {
 	case "plain":

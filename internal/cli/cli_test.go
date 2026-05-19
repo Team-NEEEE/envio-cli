@@ -584,6 +584,202 @@ func TestRunPullPlainSuccessWritesEnvironment(t *testing.T) {
 	}
 }
 
+func TestRunHistoryPlainListsVersionsWithoutDecrypting(t *testing.T) {
+	setCLIUserConfigDir(t)
+	saveValidCLISession(t)
+	cwd := initGitRepository(t, "git@github.com:Team-NEEEE/envio-cli.git")
+	masterKey := []byte("12345678901234567890123456789012")
+	writeLegacyProjectSession(t, cwd, masterKey, 2)
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/cli/projects/1/history" || request.Method != http.MethodGet {
+			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(writer).Encode(map[string]any{
+			"success": true,
+			"data": map[string]any{
+				"message": "histories",
+				"histories": []map[string]any{
+					{
+						"history_id":            12,
+						"project_id":            1,
+						"version_id":            8,
+						"base_version_id":       7,
+						"github_id":             "octocat",
+						"created_at":            "2026-04-20 11:00:00",
+						"encrypted_environment": map[string]any{"ciphertext": "secret-ciphertext"},
+					},
+				},
+			},
+			"error":     nil,
+			"timestamp": "2026-05-12T01:02:17",
+		}); err != nil {
+			t.Fatalf("encode history response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--plain", "--api-url", server.URL, "history"},
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        cwd,
+		IsTerminal: func() bool { return false },
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "v8") ||
+		!strings.Contains(out.String(), "2026-04-20 11:00") ||
+		!strings.Contains(out.String(), "octocat") ||
+		!strings.Contains(out.String(), "latest") {
+		t.Fatalf("history output = %s", out.String())
+	}
+	if strings.Contains(out.String(), "secret-ciphertext") {
+		t.Fatalf("history list output leaked encrypted payload: %s", out.String())
+	}
+}
+
+func TestRunHistoryPlainDecryptsSelectedVersion(t *testing.T) {
+	setCLIUserConfigDir(t)
+	saveValidCLISession(t)
+	cwd := initGitRepository(t, "git@github.com:Team-NEEEE/envio-cli.git")
+	masterKey := []byte("12345678901234567890123456789012")
+	writeLegacyProjectSession(t, cwd, masterKey, 2)
+	encrypted, err := envcrypto.EncryptEnvironment([]byte("API_KEY=secret\nDATABASE_URL=postgres://localhost/db\n"), masterKey)
+	if err != nil {
+		t.Fatalf("EncryptEnvironment() error = %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/cli/projects/1/history" || request.Method != http.MethodGet {
+			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(writer).Encode(map[string]any{
+			"success": true,
+			"data": map[string]any{
+				"message": "histories",
+				"histories": []map[string]any{
+					{
+						"history_id":            12,
+						"project_id":            1,
+						"version_id":            8,
+						"base_version_id":       7,
+						"github_id":             "octocat",
+						"created_at":            "2026-04-20 11:00:00",
+						"encrypted_environment": encrypted,
+					},
+				},
+			},
+			"error":     nil,
+			"timestamp": "2026-05-12T01:02:17",
+		}); err != nil {
+			t.Fatalf("encode history response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--plain", "--api-url", server.URL, "history", "v8"},
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        cwd,
+		IsTerminal: func() bool { return false },
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "Version v8") ||
+		!strings.Contains(out.String(), "Base Version: v7") ||
+		!strings.Contains(out.String(), "API_KEY=secret") ||
+		!strings.Contains(out.String(), "DATABASE_URL=postgres://localhost/db") {
+		t.Fatalf("history version output = %s", out.String())
+	}
+	if got := readProjectVersion(t, cwd); got != 2 {
+		t.Fatalf("history should not update local sync version, got %d", got)
+	}
+}
+
+func TestRunHistoryInteractiveCanReturnToVersionList(t *testing.T) {
+	setCLIUserConfigDir(t)
+	saveValidCLISession(t)
+	cwd := initGitRepository(t, "git@github.com:Team-NEEEE/envio-cli.git")
+	masterKey := []byte("12345678901234567890123456789012")
+	writeLegacyProjectSession(t, cwd, masterKey, 2)
+	encryptedV3, err := envcrypto.EncryptEnvironment([]byte("API_KEY=v3\n"), masterKey)
+	if err != nil {
+		t.Fatalf("EncryptEnvironment(v3) error = %v", err)
+	}
+	encryptedV2, err := envcrypto.EncryptEnvironment([]byte("API_KEY=v2\n"), masterKey)
+	if err != nil {
+		t.Fatalf("EncryptEnvironment(v2) error = %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/cli/projects/1/history" || request.Method != http.MethodGet {
+			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(writer).Encode(map[string]any{
+			"success": true,
+			"data": []map[string]any{
+				{
+					"histories_id":          13,
+					"project_id":            1,
+					"version_id":            3,
+					"base_version_id":       2,
+					"github_id":             "octocat",
+					"created_at":            "2026-05-19T14:02:51",
+					"encrypted_environment": encryptedV3,
+				},
+				{
+					"histories_id":          12,
+					"project_id":            1,
+					"version_id":            2,
+					"base_version_id":       1,
+					"github_id":             "octocat",
+					"created_at":            "2026-05-19T13:42:51",
+					"encrypted_environment": encryptedV2,
+				},
+			},
+			"error":     nil,
+			"timestamp": "2026-05-12T01:02:17",
+		}); err != nil {
+			t.Fatalf("encode history response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	code := Run(context.Background(), Runtime{
+		Args:       []string{"--api-url", server.URL, "history"},
+		Stdin:      strings.NewReader("1\n1\n2\n2\n"),
+		Stdout:     &out,
+		Stderr:     &errOut,
+		CWD:        cwd,
+		IsTerminal: func() bool { return true },
+	})
+	if code != 0 {
+		t.Fatalf("Run() exit = %d, stderr = %s", code, errOut.String())
+	}
+	output := out.String()
+	if strings.Count(output, "Select a version to inspect") != 2 ||
+		!strings.Contains(output, "Back to version list") ||
+		!strings.Contains(output, "Version v3") ||
+		!strings.Contains(output, "API_KEY=v3") ||
+		!strings.Contains(output, "Version v2") ||
+		!strings.Contains(output, "API_KEY=v2") {
+		t.Fatalf("interactive history output = %s", output)
+	}
+}
+
 func TestRunUnknownCommandDebugUsesJSONContract(t *testing.T) {
 	t.Parallel()
 
@@ -744,10 +940,10 @@ func readProjectVersion(t *testing.T, cwd string) int64 {
 
 	raw, err := os.ReadFile(filepath.Join(cwd, ".envio", "config"))
 	if err != nil {
-		if os.IsNotExist(err) {
+		if shouldTryLegacyProjectPath(err) {
 			raw, err = os.ReadFile(filepath.Join(cwd, ".envio", "session"))
 		}
-		if os.IsNotExist(err) {
+		if shouldTryLegacyProjectPath(err) {
 			raw, err = os.ReadFile(filepath.Join(cwd, ".envio"))
 		}
 	}
@@ -767,4 +963,14 @@ func readProjectVersion(t *testing.T, cwd string) int64 {
 		return payload.VersionID
 	}
 	return payload.Session.VersionID
+}
+
+func shouldTryLegacyProjectPath(err error) bool {
+	if err == nil {
+		return false
+	}
+	if os.IsNotExist(err) {
+		return true
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "not a directory")
 }
